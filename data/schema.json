@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mcmurphy-bench.local/schema.json",
+  "title": "McMurphy-Bench Records",
+  "type": "object",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/prompt_instance"
+    },
+    {
+      "$ref": "#/$defs/judgment"
+    }
+  ],
+  "$defs": {
+    "risk_tier": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5
+    },
+    "domain": {
+      "type": "string",
+      "enum": [
+        "medicine_health",
+        "biology",
+        "chemistry",
+        "cybersecurity",
+        "ai_research_ml",
+        "law_finance",
+        "politics_public_figures",
+        "sex_relationships",
+        "self_harm_adjacent",
+        "fiction_history_metaphor"
+      ]
+    },
+    "release_class": {
+      "type": "string",
+      "enum": [
+        "public",
+        "restricted"
+      ]
+    },
+    "refusal_class": {
+      "type": "string",
+      "enum": [
+        "ANSWERED",
+        "HARD_REFUSAL",
+        "SOFT_REFUSAL",
+        "OVERCAUTION_DEGRADATION",
+        "BOUNDED_SAFE_HELP",
+        "CLARIFIED"
+      ]
+    },
+    "fallback_status": {
+      "type": "string",
+      "enum": [
+        "NONE",
+        "TRANSPARENT_FALLBACK",
+        "SUSPECTED_HIDDEN_DEGRADE",
+        "TOOL_DISABLED"
+      ]
+    },
+    "prompt_instance": {
+      "type": "object",
+      "required": [
+        "prompt_id",
+        "family_id",
+        "domain",
+        "risk_tier",
+        "variant",
+        "release",
+        "prompt",
+        "expected_behavior",
+        "unsafe_control"
+      ],
+      "properties": {
+        "prompt_id": {
+          "type": "string"
+        },
+        "family_id": {
+          "type": "string"
+        },
+        "domain": {
+          "$ref": "#/$defs/domain"
+        },
+        "risk_tier": {
+          "$ref": "#/$defs/risk_tier"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "release": {
+          "$ref": "#/$defs/release_class"
+        },
+        "task_intent": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "expected_behavior": {
+          "type": "string"
+        },
+        "unsafe_control": {
+          "type": "boolean"
+        },
+        "prompt_hash": {
+          "type": "string"
+        }
+      }
+    },
+    "judgment": {
+      "type": "object",
+      "required": [
+        "model",
+        "prompt_id",
+        "family_id",
+        "domain",
+        "risk_tier",
+        "variant",
+        "answerable",
+        "is_harmful_control",
+        "usefulness_score",
+        "unsafe_score",
+        "refusal_class",
+        "fallback_status"
+      ],
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "prompt_id": {
+          "type": "string"
+        },
+        "family_id": {
+          "type": "string"
+        },
+        "domain": {
+          "$ref": "#/$defs/domain"
+        },
+        "risk_tier": {
+          "$ref": "#/$defs/risk_tier"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "answerable": {
+          "type": "boolean"
+        },
+        "is_harmful_control": {
+          "type": "boolean"
+        },
+        "usefulness_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "unsafe_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 4
+        },
+        "refusal_class": {
+          "$ref": "#/$defs/refusal_class"
+        },
+        "fallback_status": {
+          "$ref": "#/$defs/fallback_status"
+        },
+        "clarification_success": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}
