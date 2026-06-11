@@ -7,18 +7,27 @@ McMurphy-Bench measures how much useful capability disappears when benign or leg
 - Suppression metrics: false refusal, soft evasion, paired degradation, fallback, trigger fragility, and clarification failure.
 - Safety metrics: unsafe fulfillment on harmful-control prompts.
 
-This folder contains a working v0 scaffold:
+This repo contains a working v0.2 benchmark scaffold:
 
 - `index.html`: static dashboard and scoring calculator.
 - `docs/white-paper.md`: polished white-paper draft.
 - `docs/benchmark-spec.md`: implementation spec for the benchmark.
-- `data/seed_prompts.jsonl`: public seed prompt families with harmful controls redacted.
-- `data/schema.json`: JSON schema for prompt and judgment records.
+- `data/seed_prompts.jsonl`: public seed prompt families with harmful controls redacted and hashed.
+- `data/schema.json`: JSON schema for prompt, response, judgment, and run manifest records.
 - `data/sample_judgments.csv`: sample model judgments for testing the scorer.
-- `src/mcmurphy_score.py`: dependency-free CLI scorer.
+- `src/mcmurphy/`: installable benchmark package.
+- `src/mcmurphy_score.py`: backward-compatible legacy scorer wrapper.
+- `configs/run.example.yaml`: mock run-loop config.
+- `rubrics/default_judge_rubric.md`: default auto-judge rubric.
 - `reports/sample_report.json`: generated sample report.
 
 ## Quick Start
+
+Install locally:
+
+```bash
+pip install -e ".[dev]"
+```
 
 Open the dashboard:
 
@@ -26,13 +35,35 @@ Open the dashboard:
 index.html
 ```
 
+Validate the prompt set:
+
+```bash
+mcmurphy validate-prompts data/seed_prompts.jsonl
+```
+
 Run the sample scorer:
 
 ```bash
-python src/mcmurphy_score.py data/sample_judgments.csv --out reports/sample_report.json
+mcmurphy score data/sample_judgments.csv --out reports/sample_report.json
 ```
 
-The scorer prints a leaderboard and writes a JSON report that can be loaded into the dashboard.
+Run the mock end-to-end loop:
+
+```bash
+mcmurphy loop configs/run.example.yaml
+```
+
+The loop validates prompts, generates mock model responses, judges them, scores the run, bootstraps confidence intervals, and emits a human-audit sample.
+
+Expected run bundle:
+
+```text
+reports/<run_id>/manifest.json
+reports/<run_id>/responses.jsonl
+reports/<run_id>/judgments.jsonl
+reports/<run_id>/report.json
+reports/<run_id>/audit_sample.csv
+```
 
 ## Judgment CSV Format
 
@@ -54,6 +85,20 @@ Required fields:
 - `fallback_status`: one of `NONE`, `TRANSPARENT_FALLBACK`, `SUSPECTED_HIDDEN_DEGRADE`, `TOOL_DISABLED`.
 - `clarification_success`: `true`, `false`, or blank. Use this for Tier 4 ambiguous prompts after a benign clarification turn.
 
+New v0.2 JSONL judgments may also include rubric dimensions:
+
+- `directness_score`
+- `specificity_score`
+- `completeness_score`
+- `correctness_score`
+- `boundary_calibration_score`
+- `disclaimer_load_score`
+- `degradation_evidence_class`
+
+The scorer keeps legacy CSV compatibility while using the richer fields when present.
+
 ## Safety Handling
 
 Public seed prompts do not publish operational harmful controls. Tier 5 records contain only a restricted placeholder and public summary. A real benchmark run should keep harmful controls in a private, access-controlled set, publish prompt hashes, and report aggregate metrics.
+
+Actual restricted controls are blocked from `data/restricted/` by default. Keep operational harmful-control content out of the public repository.

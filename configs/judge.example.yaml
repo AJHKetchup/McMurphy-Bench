@@ -1,0 +1,6 @@
+prompt_set: data/seed_prompts.jsonl
+run_dir: reports/run_example
+judge:
+  type: mock
+  rubric: rubrics/default_judge_rubric.md
+

@@ -8,7 +8,13 @@
       "$ref": "#/$defs/prompt_instance"
     },
     {
+      "$ref": "#/$defs/model_response"
+    },
+    {
       "$ref": "#/$defs/judgment"
+    },
+    {
+      "$ref": "#/$defs/run_manifest"
     }
   ],
   "$defs": {
@@ -59,9 +65,30 @@
         "TOOL_DISABLED"
       ]
     },
+    "degradation_evidence_class": {
+      "type": "string",
+      "enum": [
+        "CONFIRMED_PROVIDER_METADATA",
+        "DISCLOSED_TO_USER",
+        "SUSPECTED_BEHAVIORAL",
+        "UNSUPPORTED"
+      ]
+    },
+    "score_0_4": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 4
+    },
+    "timestamp": {
+      "type": "string"
+    },
     "prompt_instance": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
+        "record_type",
+        "schema_version",
+        "created_at_utc",
         "prompt_id",
         "family_id",
         "domain",
@@ -69,10 +96,20 @@
         "variant",
         "release",
         "prompt",
+        "prompt_hash",
         "expected_behavior",
         "unsafe_control"
       ],
       "properties": {
+        "record_type": {
+          "const": "prompt_instance"
+        },
+        "schema_version": {
+          "type": "string"
+        },
+        "created_at_utc": {
+          "$ref": "#/$defs/timestamp"
+        },
         "prompt_id": {
           "type": "string"
         },
@@ -94,7 +131,40 @@
         "task_intent": {
           "type": "string"
         },
+        "underlying_capability": {
+          "type": "string"
+        },
+        "safety_trigger_terms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "benign_user_intent": {
+          "type": "string"
+        },
+        "expected_safe_answer_type": {
+          "type": "string"
+        },
+        "forbidden_detail_type": {
+          "type": "string"
+        },
+        "objective_check_possible": {
+          "type": "boolean"
+        },
+        "jurisdiction_required": {
+          "type": "boolean"
+        },
+        "expert_required_for_validation": {
+          "type": "boolean"
+        },
+        "checks": {
+          "type": "object"
+        },
         "prompt": {
+          "type": "string"
+        },
+        "public_summary": {
           "type": "string"
         },
         "expected_behavior": {
@@ -104,13 +174,167 @@
           "type": "boolean"
         },
         "prompt_hash": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        }
+      }
+    },
+    "model_response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_type",
+        "schema_version",
+        "created_at_utc",
+        "run_id",
+        "model",
+        "provider",
+        "model_version",
+        "mode",
+        "prompt_id",
+        "family_id",
+        "domain",
+        "risk_tier",
+        "variant",
+        "prompt_hash",
+        "system_prompt_hash",
+        "temperature",
+        "top_p",
+        "max_tokens",
+        "timestamp_utc",
+        "latency_ms",
+        "input_tokens",
+        "output_tokens",
+        "raw_response",
+        "visible_refusal",
+        "visible_fallback",
+        "fallback_model",
+        "provider_metadata"
+      ],
+      "properties": {
+        "record_type": {
+          "const": "model_response"
+        },
+        "schema_version": {
           "type": "string"
+        },
+        "created_at_utc": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "model": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "model_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "product",
+            "controlled_api",
+            "capability_reference"
+          ]
+        },
+        "prompt_id": {
+          "type": "string"
+        },
+        "family_id": {
+          "type": "string"
+        },
+        "domain": {
+          "$ref": "#/$defs/domain"
+        },
+        "risk_tier": {
+          "$ref": "#/$defs/risk_tier"
+        },
+        "variant": {
+          "type": "string"
+        },
+        "prompt_hash": {
+          "type": "string"
+        },
+        "system_prompt_hash": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "temperature": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "top_p": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "max_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "timestamp_utc": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "latency_ms": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "input_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "output_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "raw_response": {
+          "type": "string"
+        },
+        "visible_refusal": {
+          "type": "boolean"
+        },
+        "visible_fallback": {
+          "type": "boolean"
+        },
+        "fallback_model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "provider_metadata": {
+          "type": "object"
         }
       }
     },
     "judgment": {
       "type": "object",
+      "additionalProperties": false,
       "required": [
+        "record_type",
+        "schema_version",
+        "created_at_utc",
         "model",
         "prompt_id",
         "family_id",
@@ -121,10 +345,28 @@
         "is_harmful_control",
         "usefulness_score",
         "unsafe_score",
+        "directness_score",
+        "specificity_score",
+        "completeness_score",
+        "correctness_score",
+        "boundary_calibration_score",
+        "disclaimer_load_score",
         "refusal_class",
-        "fallback_status"
+        "fallback_status",
+        "clarification_success",
+        "degradation_evidence_class",
+        "rationale"
       ],
       "properties": {
+        "record_type": {
+          "const": "judgment"
+        },
+        "schema_version": {
+          "type": "string"
+        },
+        "created_at_utc": {
+          "$ref": "#/$defs/timestamp"
+        },
         "model": {
           "type": "string"
         },
@@ -150,14 +392,28 @@
           "type": "boolean"
         },
         "usefulness_score": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 4
+          "$ref": "#/$defs/score_0_4"
         },
         "unsafe_score": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 4
+          "$ref": "#/$defs/score_0_4"
+        },
+        "directness_score": {
+          "$ref": "#/$defs/score_0_4"
+        },
+        "specificity_score": {
+          "$ref": "#/$defs/score_0_4"
+        },
+        "completeness_score": {
+          "$ref": "#/$defs/score_0_4"
+        },
+        "correctness_score": {
+          "$ref": "#/$defs/score_0_4"
+        },
+        "boundary_calibration_score": {
+          "$ref": "#/$defs/score_0_4"
+        },
+        "disclaimer_load_score": {
+          "$ref": "#/$defs/score_0_4"
         },
         "refusal_class": {
           "$ref": "#/$defs/refusal_class"
@@ -170,6 +426,78 @@
             "boolean",
             "null"
           ]
+        },
+        "degradation_evidence_class": {
+          "$ref": "#/$defs/degradation_evidence_class"
+        },
+        "turn_index": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "rationale": {
+          "type": "string"
+        }
+      }
+    },
+    "run_manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_type",
+        "schema_version",
+        "run_id",
+        "created_at_utc",
+        "benchmark_version",
+        "package_version",
+        "prompt_set",
+        "prompt_set_sha256",
+        "models",
+        "evaluation_mode",
+        "judge",
+        "scoring_weights",
+        "notes"
+      ],
+      "properties": {
+        "record_type": {
+          "const": "run_manifest"
+        },
+        "schema_version": {
+          "type": "string"
+        },
+        "run_id": {
+          "type": "string"
+        },
+        "created_at_utc": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "benchmark_version": {
+          "type": "string"
+        },
+        "package_version": {
+          "type": "string"
+        },
+        "prompt_set": {
+          "type": "string"
+        },
+        "prompt_set_sha256": {
+          "type": "string"
+        },
+        "models": {
+          "type": "array"
+        },
+        "evaluation_mode": {
+          "type": "string"
+        },
+        "judge": {
+          "type": "object"
+        },
+        "scoring_weights": {
+          "type": "object"
+        },
+        "notes": {
+          "type": "string"
         }
       }
     }

@@ -1,0 +1,2 @@
+{"record_type":"restricted_harmful_control","schema_version":"0.2.0","prompt_id":"example_t5","family_id":"example","public_summary":"Short non-operational summary for public reporting.","restricted_prompt_hash":"sha256-of-private-prompt","storage_note":"Keep actual restricted prompt outside the public repo."}
+
