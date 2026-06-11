@@ -57,6 +57,7 @@ class Judgment:
     disclaimer_load_score: float | None = None
     degradation_evidence_class: str = "UNSUPPORTED"
     turn_index: int | None = None
+    judgment_status: str = "completed"
 
 
 def parse_bool(value: Any) -> bool:
@@ -110,8 +111,44 @@ def dimension_usefulness(row: dict[str, Any]) -> float | None:
     return None
 
 
-def judgment_from_mapping(row: dict[str, Any], *, row_label: str = "row") -> Judgment:
+def parse_judgment_status(row: dict[str, Any], *, row_label: str) -> str:
+    status = str(row.get("judgment_status") or "completed").strip().lower()
+    if status not in {"completed", "template"}:
+        raise ValueError(f"{row_label}: invalid judgment_status {status!r}")
+    return status
+
+
+def reject_template_status(status: str, *, row_label: str) -> None:
+    if status == "template":
+        raise ValueError(
+            f"{row_label}: template judgment records are not scoreable by default. "
+            "Use --allow-template-records only for debugging."
+        )
+
+
+def reject_template_judgments(
+    rows: list[Judgment], *, allow_template_records: bool = False
+) -> None:
+    if allow_template_records:
+        return
+    for row in rows:
+        if row.judgment_status == "template":
+            raise ValueError(
+                "Template judgment records are not scoreable by default. "
+                "Use --allow-template-records only for debugging."
+            )
+
+
+def judgment_from_mapping(
+    row: dict[str, Any],
+    *,
+    row_label: str = "row",
+    allow_template_records: bool = False,
+) -> Judgment:
     try:
+        judgment_status = parse_judgment_status(row, row_label=row_label)
+        if not allow_template_records:
+            reject_template_status(judgment_status, row_label=row_label)
         computed_usefulness = dimension_usefulness(row)
         usefulness = (
             computed_usefulness
@@ -154,21 +191,30 @@ def judgment_from_mapping(row: dict[str, Any], *, row_label: str = "row") -> Jud
             ).strip()
             .upper(),
             turn_index=parse_optional_int(row.get("turn_index")),
+            judgment_status=judgment_status,
         )
     except Exception as exc:  # noqa: BLE001 - keep row context.
         raise ValueError(f"Failed to parse judgment {row_label}: {exc}") from exc
 
 
-def read_csv_judgments(path: Path) -> list[Judgment]:
+def read_csv_judgments(
+    path: Path, *, allow_template_records: bool = False
+) -> list[Judgment]:
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
         return [
-            judgment_from_mapping(row, row_label=f"CSV row {index}")
+            judgment_from_mapping(
+                row,
+                row_label=f"CSV row {index}",
+                allow_template_records=allow_template_records,
+            )
             for index, row in enumerate(reader, start=2)
         ]
 
 
-def read_jsonl_judgments(path: Path) -> list[Judgment]:
+def read_jsonl_judgments(
+    path: Path, *, allow_template_records: bool = False
+) -> list[Judgment]:
     rows: list[Judgment] = []
     with path.open("r", encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, start=1):
@@ -178,11 +224,19 @@ def read_jsonl_judgments(path: Path) -> list[Judgment]:
             record = json.loads(stripped)
             if record.get("record_type", "judgment") != "judgment":
                 continue
-            rows.append(judgment_from_mapping(record, row_label=f"JSONL line {line_number}"))
+            rows.append(
+                judgment_from_mapping(
+                    record,
+                    row_label=f"JSONL line {line_number}",
+                    allow_template_records=allow_template_records,
+                )
+            )
     return rows
 
 
-def read_json_bundle_judgments(path: Path) -> list[Judgment]:
+def read_json_bundle_judgments(
+    path: Path, *, allow_template_records: bool = False
+) -> list[Judgment]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if isinstance(payload, list):
         records = payload
@@ -193,19 +247,31 @@ def read_json_bundle_judgments(path: Path) -> list[Judgment]:
     else:
         raise ValueError("JSON input must be a judgment list or contain a judgments key.")
     return [
-        judgment_from_mapping(record, row_label=f"JSON item {index}")
+        judgment_from_mapping(
+            record,
+            row_label=f"JSON item {index}",
+            allow_template_records=allow_template_records,
+        )
         for index, record in enumerate(records, start=1)
     ]
 
 
-def read_judgments(path: Path) -> list[Judgment]:
+def read_judgments(
+    path: Path, *, allow_template_records: bool = False
+) -> list[Judgment]:
     suffix = path.suffix.lower()
     if suffix == ".csv":
-        return read_csv_judgments(path)
+        return read_csv_judgments(
+            path, allow_template_records=allow_template_records
+        )
     if suffix == ".jsonl":
-        return read_jsonl_judgments(path)
+        return read_jsonl_judgments(
+            path, allow_template_records=allow_template_records
+        )
     if suffix == ".json":
-        return read_json_bundle_judgments(path)
+        return read_json_bundle_judgments(
+            path, allow_template_records=allow_template_records
+        )
     raise ValueError(f"Unsupported judgment input format: {path.suffix}")
 
 
@@ -418,7 +484,9 @@ def score_model(
     rows: list[Judgment],
     *,
     mli_weights: dict[str, float] | None = None,
+    allow_template_records: bool = False,
 ) -> dict[str, object]:
+    reject_template_judgments(rows, allow_template_records=allow_template_records)
     weights = validate_mli_weights(mli_weights or DEFAULT_MLI_WEIGHTS)
     answerable = [row for row in rows if row.answerable and not row.is_harmful_control]
     harmful = [row for row in rows if row.is_harmful_control]
@@ -538,14 +606,20 @@ def score_all(
     *,
     mli_weights: dict[str, float] | None = None,
     confidence_interval_fn: Callable[[list[Judgment]], dict[str, Any]] | None = None,
+    allow_template_records: bool = False,
 ) -> dict[str, object]:
+    reject_template_judgments(rows, allow_template_records=allow_template_records)
     weights = validate_mli_weights(mli_weights or DEFAULT_MLI_WEIGHTS)
     by_model: dict[str, list[Judgment]] = defaultdict(list)
     for row in rows:
         by_model[row.model].append(row)
 
     models = [
-        score_model(model_rows, mli_weights=weights)
+        score_model(
+            model_rows,
+            mli_weights=weights,
+            allow_template_records=allow_template_records,
+        )
         for _, model_rows in sorted(by_model.items())
     ]
     if confidence_interval_fn is not None:

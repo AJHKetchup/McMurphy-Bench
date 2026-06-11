@@ -15,9 +15,19 @@ from .schema import SCHEMA_VERSION, validate_record
 def load_responses(path: Path) -> list[dict[str, Any]]:
     responses: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as handle:
-        for line in handle:
+        for line_number, line in enumerate(handle, start=1):
             if line.strip():
-                responses.append(json.loads(line))
+                response = json.loads(line)
+                expected_hash = sha256_text(str(response.get("raw_response", "")))
+                actual_hash = response.get("response_hash")
+                if actual_hash != expected_hash:
+                    raise ValueError(
+                        f"{path}:{line_number}: response_hash mismatch for "
+                        f"model={response.get('model')!r}, "
+                        f"prompt_id={response.get('prompt_id')!r}: "
+                        f"expected {expected_hash}, actual {actual_hash!r}"
+                    )
+                responses.append(response)
     return responses
 
 
@@ -121,6 +131,7 @@ def normalize_replay_judgment(
     return {
         "record_type": "judgment",
         "schema_version": str(record.get("schema_version") or SCHEMA_VERSION),
+        "judgment_status": "completed",
         "created_at_utc": str(
             record.get("created_at_utc") or response["created_at_utc"]
         ),
@@ -238,6 +249,7 @@ def mock_judgment(
     return {
         "record_type": "judgment",
         "schema_version": SCHEMA_VERSION,
+        "judgment_status": "completed",
         "created_at_utc": response["created_at_utc"],
         "run_id": response["run_id"],
         "model": model,
@@ -325,6 +337,7 @@ def judgment_template_records(
         record = {
             "record_type": "judgment",
             "schema_version": SCHEMA_VERSION,
+            "judgment_status": "template",
             "created_at_utc": response["created_at_utc"],
             "run_id": response["run_id"],
             "model": response["model"],

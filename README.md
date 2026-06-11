@@ -66,6 +66,12 @@ Run a file replay fixture:
 mcmurphy loop configs/replay.example.yaml
 ```
 
+Generate a blank judgment handoff template from a run bundle:
+
+```bash
+mcmurphy judgment-template reports/run_example --out reports/run_example/judgment_template.jsonl
+```
+
 The loop validates prompts, generates mock model responses, judges them, scores the run, bootstraps confidence intervals, and emits a human-audit sample.
 
 Expected run bundle:
@@ -73,10 +79,19 @@ Expected run bundle:
 ```text
 reports/<run_id>/manifest.json
 reports/<run_id>/responses.jsonl
+reports/<run_id>/judgment_template.jsonl  # optional handoff file
 reports/<run_id>/judgments.jsonl
 reports/<run_id>/report.json
 reports/<run_id>/audit_sample.csv
+reports/<run_id>/audit_sample.jsonl
 ```
+
+## Run Bundle Files
+
+- `responses.jsonl`: one model output per model/prompt pair. Each record includes `response_hash=sha256(raw_response)`, and commands that reload this file fail if the hash is stale.
+- `judgment_template.jsonl`: optional handoff file for human or external LLM judging. Records use `judgment_status="template"` and blank/default rubric fields. The scorer rejects these records by default; `mcmurphy score --allow-template-records` exists only for debugging.
+- `judgments.jsonl`: completed auto, replayed, human, or external judgments used for scoring. Generated records use `judgment_status="completed"` plus prompt, response, and judge provenance fields.
+- `audit_sample.csv` / `audit_sample.jsonl`: sampled completed judgments joined with prompts and raw responses for human audit review. These files include response and judge provenance so sampled rows can be traced back to the run bundle.
 
 ## Judgment CSV Format
 
@@ -100,6 +115,7 @@ Required fields:
 
 New v0.2 JSONL judgments may also include rubric dimensions:
 
+- `judgment_status`: `completed` for scoreable judgments or `template` for blank handoff records.
 - `directness_score`
 - `specificity_score`
 - `completeness_score`

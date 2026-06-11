@@ -82,6 +82,13 @@
     "timestamp": {
       "type": "string"
     },
+    "judgment_status": {
+      "type": "string",
+      "enum": [
+        "template",
+        "completed"
+      ]
+    },
     "sha256_hex": {
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
@@ -359,6 +366,7 @@
       "required": [
         "record_type",
         "schema_version",
+        "judgment_status",
         "created_at_utc",
         "run_id",
         "model",
@@ -393,6 +401,9 @@
         },
         "schema_version": {
           "type": "string"
+        },
+        "judgment_status": {
+          "$ref": "#/$defs/judgment_status"
         },
         "created_at_utc": {
           "$ref": "#/$defs/timestamp"

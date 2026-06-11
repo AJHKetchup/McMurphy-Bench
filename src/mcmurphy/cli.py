@@ -36,9 +36,15 @@ def command_validate_prompts(args: argparse.Namespace) -> int:
 
 
 def command_score(args: argparse.Namespace) -> int:
-    rows = read_judgments(Path(args.input))
+    rows = read_judgments(
+        Path(args.input), allow_template_records=bool(args.allow_template_records)
+    )
     weights = load_weights(Path(args.config)) if args.config else None
-    report = score_all(rows, mli_weights=weights)
+    report = score_all(
+        rows,
+        mli_weights=weights,
+        allow_template_records=bool(args.allow_template_records),
+    )
     print_table(report)
     if args.out:
         out = Path(args.out)
@@ -216,6 +222,7 @@ def build_parser() -> argparse.ArgumentParser:
     score.add_argument("input")
     score.add_argument("--out")
     score.add_argument("--config")
+    score.add_argument("--allow-template-records", action="store_true")
     score.set_defaults(func=command_score)
 
     run = subcommands.add_parser("run")

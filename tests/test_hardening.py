@@ -29,6 +29,13 @@ def write_jsonl(path: Path, records: list[dict]) -> None:
     )
 
 
+def corrupt_first_response_hash(run_dir: Path) -> None:
+    responses_path = run_dir / "responses.jsonl"
+    responses = read_jsonl(responses_path)
+    responses[0]["response_hash"] = "0" * 64
+    write_jsonl(responses_path, responses)
+
+
 def copy_core_files(tmp_path: Path) -> None:
     (tmp_path / "configs").mkdir()
     (tmp_path / "data").mkdir()
@@ -184,6 +191,20 @@ def test_invalid_generated_records_fail_validation(tmp_path):
         validate_record(bad_response, root=tmp_path)
 
 
+def test_completed_mock_judgments_have_completed_status(tmp_path):
+    copy_core_files(tmp_path)
+    config = yaml.safe_load(Path("configs/run.example.yaml").read_text())
+    config["run_id"] = "run_mock_status"
+    config_path = tmp_path / "configs/run.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    assert main(["loop", str(config_path)]) == 0
+
+    judgments = read_jsonl(tmp_path / "reports/run_mock_status/judgments.jsonl")
+    assert judgments
+    assert {judgment["judgment_status"] for judgment in judgments} == {"completed"}
+
+
 def test_unknown_judge_type_fails(tmp_path):
     copy_core_files(tmp_path)
     config = yaml.safe_load(Path("configs/run.example.yaml").read_text())
@@ -308,6 +329,7 @@ def test_file_replay_successful_loop(tmp_path):
     assert report["run_manifest"]["run_id"] == "run_replay_success"
     assert judgments[0]["usefulness_score"] == 3.75
     assert judgments[0]["judge_id"] == "fixture_replay_judge"
+    assert judgments[0]["judgment_status"] == "completed"
     assert report["models"][0]["metrics"]["safe_utility"] > 90
 
 
@@ -328,10 +350,84 @@ def test_judgment_template_emits_one_record_per_response(tmp_path):
     template = read_jsonl(out_path)
     assert len(template) == len(responses)
     assert "raw_response" not in template[0]
+    assert template[0]["judgment_status"] == "template"
     assert template[0]["run_id"] == "run_template"
     assert template[0]["prompt_hash"]
     assert template[0]["response_hash"]
     assert template[0]["judge_id"] == ""
+
+
+def test_score_rejects_judgment_template_without_debug_flag(tmp_path):
+    copy_core_files(tmp_path)
+    config = yaml.safe_load(Path("configs/run.example.yaml").read_text())
+    config["run_id"] = "run_template_score"
+    config_path = tmp_path / "configs/run.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    assert main(["loop", str(config_path)]) == 0
+
+    run_dir = tmp_path / "reports/run_template_score"
+    template_path = run_dir / "judgment_template.jsonl"
+    assert main(["judgment-template", str(run_dir), "--out", str(template_path)]) == 0
+
+    with pytest.raises(ValueError, match="template judgment records"):
+        main(["score", str(template_path)])
+    assert main(["score", str(template_path), "--allow-template-records"]) == 0
+
+
+def test_corrupted_response_hash_fails_during_audit(tmp_path):
+    copy_core_files(tmp_path)
+    config = yaml.safe_load(Path("configs/run.example.yaml").read_text())
+    config["run_id"] = "run_corrupt_audit"
+    config_path = tmp_path / "configs/run.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    assert main(["loop", str(config_path)]) == 0
+    run_dir = tmp_path / "reports/run_corrupt_audit"
+    corrupt_first_response_hash(run_dir)
+
+    with pytest.raises(ValueError, match="response_hash mismatch"):
+        main(["audit", str(run_dir), "--sample-rate", "0.15"])
+
+
+def test_corrupted_response_hash_fails_during_judgment_template(tmp_path):
+    copy_core_files(tmp_path)
+    config = yaml.safe_load(Path("configs/run.example.yaml").read_text())
+    config["run_id"] = "run_corrupt_template"
+    config_path = tmp_path / "configs/run.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    assert main(["loop", str(config_path)]) == 0
+    run_dir = tmp_path / "reports/run_corrupt_template"
+    corrupt_first_response_hash(run_dir)
+
+    with pytest.raises(ValueError, match="response_hash mismatch"):
+        main(
+            [
+                "judgment-template",
+                str(run_dir),
+                "--out",
+                str(run_dir / "judgment_template.jsonl"),
+            ]
+        )
+
+
+def test_corrupted_response_hash_fails_during_judge(tmp_path):
+    copy_core_files(tmp_path)
+    run_config = yaml.safe_load(Path("configs/run.example.yaml").read_text())
+    run_config["run_id"] = "run_example"
+    run_config_path = tmp_path / "configs/run.example.yaml"
+    run_config_path.write_text(yaml.safe_dump(run_config), encoding="utf-8")
+
+    judge_config = yaml.safe_load(Path("configs/judge.example.yaml").read_text())
+    judge_config_path = tmp_path / "configs/judge.example.yaml"
+    judge_config_path.write_text(yaml.safe_dump(judge_config), encoding="utf-8")
+
+    assert main(["run", str(run_config_path)]) == 0
+    corrupt_first_response_hash(tmp_path / "reports/run_example")
+
+    with pytest.raises(ValueError, match="response_hash mismatch"):
+        main(["judge", str(judge_config_path)])
 
 
 def test_external_prompt_set_path_does_not_crash_manifest_writing(tmp_path):
