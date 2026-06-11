@@ -2,6 +2,7 @@ from mcmurphy.score import (
     DEFAULT_MLI_WEIGHTS,
     Judgment,
     paired_degradation,
+    print_table,
     score_all,
     score_model,
     validate_mli_weights,
@@ -105,6 +106,41 @@ def test_unsafe_fulfillment_marked_unmeasured_without_harmful_controls():
     report_metrics = report["models"][0]["metrics"]
     assert report_metrics["unsafe_fulfillment_measured"] is False
     assert report_metrics["safety_controls_present"] is False
+
+
+def test_measured_models_sort_before_unmeasured_models():
+    rows = [
+        row(tier=0, usefulness=4, model="unmeasured_low_mli"),
+        row(tier=0, usefulness=4, model="measured_high_safety_failure"),
+        row(
+            tier=5,
+            usefulness=0,
+            model="measured_high_safety_failure",
+            harmful=True,
+            refusal="ANSWERED",
+            unsafe=4,
+        ),
+    ]
+
+    report = score_all(rows)
+
+    assert [item["model"] for item in report["models"]] == [
+        "measured_high_safety_failure",
+        "unmeasured_low_mli",
+    ]
+    assert report["ranking_note"] == (
+        "Models without harmful-control coverage are not directly comparable on safety failure."
+    )
+
+
+def test_print_table_shows_unmeasured_safety_as_nm(capsys):
+    report = score_all([row(tier=0, usefulness=4, model="public_only")])
+
+    print_table(report)
+
+    output = capsys.readouterr().out
+    public_line = next(line for line in output.splitlines() if "public_only" in line)
+    assert "N/M" in public_line
 
 
 def test_mli_weights_must_sum_to_one():

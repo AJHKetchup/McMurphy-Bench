@@ -13,12 +13,14 @@ This repo contains a working v0.2 benchmark scaffold:
 - `docs/white-paper.md`: polished white-paper draft.
 - `docs/benchmark-spec.md`: implementation spec for the benchmark.
 - `data/seed_prompts.jsonl`: public seed prompt families with harmful controls redacted and hashed.
+- `data/pilot_public_t0_t4.jsonl`: tiny public live-pilot subset without restricted controls.
 - `data/schema.json`: JSON schema for prompt, response, judgment, and run manifest records.
 - `data/sample_judgments.csv`: sample model judgments for testing the scorer.
 - `src/mcmurphy/`: installable benchmark package.
 - `src/mcmurphy_score.py`: backward-compatible legacy scorer wrapper.
 - `configs/run.example.yaml`: mock run-loop config.
 - `configs/live.example.yaml`: placeholder live provider response-collection config.
+- `configs/pilot.live.example.yaml`: placeholder tiny live pilot config using the public Tier 0-4 subset.
 - `rubrics/default_judge_rubric.md`: default auto-judge rubric.
 - `reports/sample_report.json`: generated sample report.
 
@@ -40,6 +42,13 @@ Validate the prompt set:
 
 ```bash
 mcmurphy validate-prompts data/seed_prompts.jsonl
+```
+
+Create and validate the tiny public live-pilot subset:
+
+```bash
+mcmurphy make-subset data/seed_prompts.jsonl --families 10 --tiers 0,1,2,3,4 --out data/pilot_public_t0_t4.jsonl
+mcmurphy validate-prompts data/pilot_public_t0_t4.jsonl --allow-incomplete-families
 ```
 
 Run the sample scorer:
@@ -70,7 +79,7 @@ mcmurphy loop configs/replay.example.yaml
 Collect live provider responses only after editing placeholder values and setting the named environment variable:
 
 ```bash
-mcmurphy run configs/live.example.yaml
+mcmurphy run configs/pilot.live.example.yaml
 ```
 
 Generate a blank judgment handoff template from a run bundle:
@@ -100,9 +109,9 @@ reports/<run_id>/audit_sample.jsonl
 - `judgments.jsonl`: completed auto, replayed, human, or external judgments used for scoring. Generated records use `judgment_status="completed"` plus prompt, response, and judge provenance fields.
 - `audit_sample.csv` / `audit_sample.jsonl`: sampled completed judgments joined with prompts and raw responses for human audit review. These files include response and judge provenance so sampled rows can be traced back to the run bundle.
 
-Live provider adapters require `live: true` on each non-mock, non-replay model entry. They skip restricted Tier 5 controls unless `include_restricted_controls: true` is set explicitly. The manifest records `restricted_controls_excluded`, skipped prompt IDs, tier counts, and per-model prompt counts so partial live pilots are auditable.
+Live provider adapters require `live: true` on each non-mock, non-replay model entry. They skip restricted Tier 5 controls unless `include_restricted_controls: true` is set explicitly. The manifest records `restricted_controls_excluded`, skipped prompt IDs, tier counts, and per-model prompt counts so partial live pilots are auditable. Use `mcmurphy make-subset` for public pilots; Tier 5 is never included unless it is explicitly listed in `--tiers`.
 
-Safety-failure metrics are measured only when harmful controls are present for a model. Reports include `unsafe_fulfillment_measured` and `safety_controls_present`; if both are `false`, the `unsafe_fulfillment_rate` placeholder must not be read as a measured zero-failure result.
+Safety-failure metrics are measured only when harmful controls are present for a model. Reports include `unsafe_fulfillment_measured` and `safety_controls_present`; if both are `false`, the `unsafe_fulfillment_rate` placeholder must not be read as a measured zero-failure result. Tables and the dashboard show `N/M` for safety failure in that case, and models without harmful-control coverage are not directly comparable on safety failure.
 
 ## Judgment CSV Format
 

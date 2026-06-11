@@ -56,7 +56,10 @@ def load_prompts(path: Path) -> list[dict[str, Any]]:
 
 
 def validate_prompt_records(
-    records: list[dict[str, Any]], *, root: Path | None = None
+    records: list[dict[str, Any]],
+    *,
+    root: Path | None = None,
+    allow_incomplete_families: bool = False,
 ) -> PromptValidationResult:
     if not records:
         raise ValueError("Prompt set is empty.")
@@ -131,13 +134,14 @@ def validate_prompt_records(
 
     for family_id, family_records in by_family.items():
         tiers = {record["risk_tier"] for record in family_records}
-        if tiers != {0, 1, 2, 3, 4, 5}:
+        if not allow_incomplete_families and tiers != {0, 1, 2, 3, 4, 5}:
             raise ValueError(
                 f"{family_id}: expected tiers 0-5, found {sorted(tiers)}"
             )
-        clean = [record for record in family_records if record["risk_tier"] == 0]
-        if len(clean) != 1:
-            raise ValueError(f"{family_id}: must have exactly one Tier 0 baseline")
+        if not allow_incomplete_families:
+            clean = [record for record in family_records if record["risk_tier"] == 0]
+            if len(clean) != 1:
+                raise ValueError(f"{family_id}: must have exactly one Tier 0 baseline")
 
     return PromptValidationResult(
         path=Path("<memory>"),
@@ -147,12 +151,84 @@ def validate_prompt_records(
     )
 
 
-def validate_prompt_file(path: Path, *, root: Path | None = None) -> PromptValidationResult:
+def validate_prompt_file(
+    path: Path,
+    *,
+    root: Path | None = None,
+    allow_incomplete_families: bool = False,
+) -> PromptValidationResult:
     records = load_prompts(path)
-    result = validate_prompt_records(records, root=root)
+    result = validate_prompt_records(
+        records,
+        root=root,
+        allow_incomplete_families=allow_incomplete_families,
+    )
     return PromptValidationResult(
         path=path,
         prompt_count=result.prompt_count,
         family_count=result.family_count,
         warnings=result.warnings,
     )
+
+
+def parse_tier_list(value: str) -> tuple[int, ...]:
+    tiers: list[int] = []
+    for raw in value.split(","):
+        item = raw.strip()
+        if not item:
+            continue
+        tier = int(item)
+        if tier < 0 or tier > 5:
+            raise ValueError(f"Tier must be between 0 and 5: {tier}")
+        if tier not in tiers:
+            tiers.append(tier)
+    if not tiers:
+        raise ValueError("At least one tier must be selected.")
+    return tuple(tiers)
+
+
+def make_prompt_subset(
+    records: list[dict[str, Any]],
+    *,
+    family_count: int,
+    tiers: tuple[int, ...],
+    root: Path | None = None,
+) -> list[dict[str, Any]]:
+    if family_count <= 0:
+        raise ValueError("--families must be greater than zero.")
+
+    tier_set = set(tiers)
+    records_by_family: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    family_order: list[str] = []
+    for record in records:
+        family_id = str(record["family_id"])
+        if family_id not in records_by_family:
+            family_order.append(family_id)
+        records_by_family[family_id].append(record)
+
+    if family_count > len(family_order):
+        raise ValueError(
+            f"Requested {family_count} families, but prompt set has only {len(family_order)}."
+        )
+
+    selected_families = family_order[:family_count]
+    subset: list[dict[str, Any]] = []
+    for family_id in selected_families:
+        family_records = records_by_family[family_id]
+        selected_records = [
+            record for record in family_records if int(record["risk_tier"]) in tier_set
+        ]
+        selected_tiers = {int(record["risk_tier"]) for record in selected_records}
+        missing = sorted(tier_set - selected_tiers)
+        if missing:
+            raise ValueError(
+                f"{family_id}: missing requested tiers {missing}; subset would be incomplete."
+            )
+        subset.extend(selected_records)
+
+    validate_prompt_records(
+        subset,
+        root=root,
+        allow_incomplete_families=True,
+    )
+    return subset

@@ -15,3 +15,9 @@ def test_dashboard_embedded_report_matches_generated_report():
     assert json.loads(match.group(1)) == report
     assert report["schema_version"] == "0.2.0"
 
+
+def test_dashboard_displays_unmeasured_safety_as_nm():
+    html = Path("index.html").read_text(encoding="utf-8")
+
+    assert 'unsafe_fulfillment_measured === false ? "N/M"' in html
+    assert "score-neutral" in html

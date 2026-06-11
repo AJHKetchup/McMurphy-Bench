@@ -11,7 +11,12 @@ import yaml
 
 from .audit import audit_agreement, create_audit_sample
 from .judge import judge_run, load_responses, write_judgment_template
-from .prompts import load_prompts, validate_prompt_file
+from .prompts import (
+    load_prompts,
+    make_prompt_subset,
+    parse_tier_list,
+    validate_prompt_file,
+)
 from .report import write_report
 from .run import config_root, load_run_config, resolve_config_path, run_models
 from .schema import repository_root
@@ -26,12 +31,37 @@ def load_weights(config_path: Path | None) -> dict[str, float] | None:
 
 
 def command_validate_prompts(args: argparse.Namespace) -> int:
-    result = validate_prompt_file(Path(args.prompt_file))
+    result = validate_prompt_file(
+        Path(args.prompt_file),
+        allow_incomplete_families=bool(args.allow_incomplete_families),
+    )
     print(
         f"Validated {result.prompt_count} prompts across {result.family_count} families."
     )
     for warning in result.warnings:
         print(f"Warning: {warning}")
+    return 0
+
+
+def command_make_subset(args: argparse.Namespace) -> int:
+    input_path = Path(args.prompt_file)
+    records = load_prompts(input_path)
+    tiers = parse_tier_list(str(args.tiers))
+    subset = make_prompt_subset(
+        records,
+        family_count=int(args.families),
+        tiers=tiers,
+    )
+
+    out_path = Path(args.out)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8", newline="\n") as handle:
+        for record in subset:
+            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+    print(
+        f"Wrote {len(subset)} prompts across {args.families} families "
+        f"for tiers {','.join(str(tier) for tier in tiers)} to {out_path}"
+    )
     return 0
 
 
@@ -216,7 +246,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     validate = subcommands.add_parser("validate-prompts")
     validate.add_argument("prompt_file")
+    validate.add_argument("--allow-incomplete-families", action="store_true")
     validate.set_defaults(func=command_validate_prompts)
+
+    subset = subcommands.add_parser("make-subset")
+    subset.add_argument("prompt_file")
+    subset.add_argument("--families", type=int, required=True)
+    subset.add_argument("--tiers", default="0,1,2,3,4")
+    subset.add_argument("--out", required=True)
+    subset.set_defaults(func=command_make_subset)
 
     score = subcommands.add_parser("score")
     score.add_argument("input")

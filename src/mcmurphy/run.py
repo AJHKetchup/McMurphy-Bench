@@ -84,7 +84,11 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
     prompt_set = resolve_config_path(root, config.get("prompt_set"), "data/seed_prompts.jsonl")
     output_root = resolve_config_path(root, config.get("output_dir"), "reports")
     prompts = load_prompts(prompt_set)
-    validate_prompt_records(prompts, root=root)
+    validate_prompt_records(
+        prompts,
+        root=root,
+        allow_incomplete_families=bool(config.get("allow_incomplete_families", False)),
+    )
 
     run_id = config.get("run_id") or make_run_id()
     run_dir = output_root / run_id
