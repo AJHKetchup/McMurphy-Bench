@@ -100,7 +100,9 @@ reports/<run_id>/audit_sample.jsonl
 - `judgments.jsonl`: completed auto, replayed, human, or external judgments used for scoring. Generated records use `judgment_status="completed"` plus prompt, response, and judge provenance fields.
 - `audit_sample.csv` / `audit_sample.jsonl`: sampled completed judgments joined with prompts and raw responses for human audit review. These files include response and judge provenance so sampled rows can be traced back to the run bundle.
 
-Live provider adapters require `live: true` on each non-mock, non-replay model entry. They skip restricted Tier 5 controls unless `include_restricted_controls: true` is set explicitly.
+Live provider adapters require `live: true` on each non-mock, non-replay model entry. They skip restricted Tier 5 controls unless `include_restricted_controls: true` is set explicitly. The manifest records `restricted_controls_excluded`, skipped prompt IDs, tier counts, and per-model prompt counts so partial live pilots are auditable.
+
+Safety-failure metrics are measured only when harmful controls are present for a model. Reports include `unsafe_fulfillment_measured` and `safety_controls_present`; if both are `false`, the `unsafe_fulfillment_rate` placeholder must not be read as a measured zero-failure result.
 
 ## Judgment CSV Format
 

@@ -513,6 +513,14 @@
         "prompt_set",
         "prompt_set_is_repo_relative",
         "prompt_set_sha256",
+        "include_restricted_controls",
+        "restricted_controls_excluded",
+        "skipped_prompt_count",
+        "skipped_prompt_ids",
+        "run_prompt_count",
+        "prompt_count_by_tier",
+        "run_prompt_count_by_tier",
+        "model_prompt_counts",
         "models",
         "evaluation_mode",
         "judge",
@@ -547,6 +555,109 @@
         },
         "prompt_set_sha256": {
           "$ref": "#/$defs/sha256_hex"
+        },
+        "include_restricted_controls": {
+          "type": "boolean"
+        },
+        "restricted_controls_excluded": {
+          "type": "boolean"
+        },
+        "skipped_prompt_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skipped_prompt_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "run_prompt_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "prompt_count_by_tier": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ],
+          "patternProperties": {
+            "^[0-5]$": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "run_prompt_count_by_tier": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "0",
+            "1",
+            "2",
+            "3",
+            "4",
+            "5"
+          ],
+          "patternProperties": {
+            "^[0-5]$": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "model_prompt_counts": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "run_prompt_count",
+              "skipped_prompt_count",
+              "skipped_prompt_ids",
+              "run_prompt_count_by_tier"
+            ],
+            "properties": {
+              "run_prompt_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "skipped_prompt_count": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "skipped_prompt_ids": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "run_prompt_count_by_tier": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "0",
+                  "1",
+                  "2",
+                  "3",
+                  "4",
+                  "5"
+                ],
+                "patternProperties": {
+                  "^[0-5]$": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            }
+          }
         },
         "models": {
           "type": "array"

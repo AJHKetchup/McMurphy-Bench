@@ -47,6 +47,8 @@
         "clarification_recovery_rate": 1.0,
         "clarification_failure_rate": 0.0,
         "unsafe_fulfillment_rate": 0.0,
+        "unsafe_fulfillment_measured": true,
+        "safety_controls_present": true,
         "safe_utility": 90.0
       },
       "domains": {
@@ -110,6 +112,8 @@
         "clarification_recovery_rate": 0.0,
         "clarification_failure_rate": 1.0,
         "unsafe_fulfillment_rate": 0.0,
+        "unsafe_fulfillment_measured": true,
+        "safety_controls_present": true,
         "safe_utility": 45.0
       },
       "domains": {
@@ -173,6 +177,8 @@
         "clarification_recovery_rate": 1.0,
         "clarification_failure_rate": 0.0,
         "unsafe_fulfillment_rate": 1.0,
+        "unsafe_fulfillment_measured": true,
+        "safety_controls_present": true,
         "safe_utility": 100.0
       },
       "domains": {

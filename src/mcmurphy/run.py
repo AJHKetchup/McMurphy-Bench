@@ -65,6 +65,18 @@ def manifest_pricing(config: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def count_by_tier(prompts: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {str(tier): 0 for tier in range(6)}
+    for prompt in prompts:
+        tier = str(int(prompt["risk_tier"]))
+        counts[tier] = counts.get(tier, 0) + 1
+    return counts
+
+
+def prompt_ids(prompts: list[dict[str, Any]]) -> list[str]:
+    return [str(prompt["prompt_id"]) for prompt in prompts]
+
+
 def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str, Any]]:
     config_path = config_path.resolve()
     config = load_run_config(config_path)
@@ -98,6 +110,8 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
     include_restricted_controls = bool(config.get("include_restricted_controls", False))
 
     responses: list[dict[str, Any]] = []
+    skipped_prompt_ids_by_model: dict[str, list[str]] = {}
+    run_prompts_by_model: dict[str, list[dict[str, Any]]] = {}
     for model in models:
         adapter_name = str(model.get("adapter", model["name"]))
         adapter = adapter_for_model(root, config, model)
@@ -106,6 +120,14 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
             model_prompts = [
                 prompt for prompt in prompts if int(prompt["risk_tier"]) != 5
             ]
+        selected_prompt_ids = set(prompt_ids(model_prompts))
+        skipped_prompts = [
+            prompt for prompt in prompts if prompt["prompt_id"] not in selected_prompt_ids
+        ]
+        run_prompts_by_model[str(model["name"])] = model_prompts
+        skipped_prompt_ids_by_model[str(model["name"])] = sorted(
+            prompt_ids(skipped_prompts)
+        )
 
         for prompt in model_prompts:
             result = adapter.generate(prompt, config, model)
@@ -142,6 +164,26 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
             validate_record(response, root=root)
             responses.append(response)
 
+    skipped_prompt_ids = sorted(
+        {
+            prompt_id
+            for model_skipped in skipped_prompt_ids_by_model.values()
+            for prompt_id in model_skipped
+        }
+    )
+    run_prompts = [
+        prompt for prompt in prompts if prompt["prompt_id"] not in set(skipped_prompt_ids)
+    ]
+    model_prompt_counts = {
+        model_name: {
+            "run_prompt_count": len(model_prompts),
+            "skipped_prompt_count": len(skipped_prompt_ids_by_model[model_name]),
+            "skipped_prompt_ids": skipped_prompt_ids_by_model[model_name],
+            "run_prompt_count_by_tier": count_by_tier(model_prompts),
+        }
+        for model_name, model_prompts in sorted(run_prompts_by_model.items())
+    }
+
     manifest = {
         "record_type": "run_manifest",
         "schema_version": SCHEMA_VERSION,
@@ -152,6 +194,14 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
         "prompt_set": prompt_set_manifest_path,
         "prompt_set_is_repo_relative": prompt_set_is_repo_relative,
         "prompt_set_sha256": file_sha256(prompt_set),
+        "include_restricted_controls": include_restricted_controls,
+        "restricted_controls_excluded": bool(skipped_prompt_ids),
+        "skipped_prompt_count": len(skipped_prompt_ids),
+        "skipped_prompt_ids": skipped_prompt_ids,
+        "run_prompt_count": len(run_prompts),
+        "prompt_count_by_tier": count_by_tier(prompts),
+        "run_prompt_count_by_tier": count_by_tier(run_prompts),
+        "model_prompt_counts": model_prompt_counts,
         "models": models,
         "evaluation_mode": mode,
         "judge": config.get("judge", {"type": "mock"}),

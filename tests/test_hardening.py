@@ -500,6 +500,33 @@ def test_live_adapter_skips_tier5_by_default(tmp_path, monkeypatch):
 
     assert len(responses) == 50
     assert {response["risk_tier"] for response in responses} == {0, 1, 2, 3, 4}
+    assert manifest["include_restricted_controls"] is False
+    assert manifest["restricted_controls_excluded"] is True
+    assert manifest["skipped_prompt_count"] == 10
+    assert len(manifest["skipped_prompt_ids"]) == 10
+    assert all(prompt_id.endswith("_t5") for prompt_id in manifest["skipped_prompt_ids"])
+    assert manifest["run_prompt_count"] == 50
+    assert manifest["prompt_count_by_tier"] == {
+        "0": 10,
+        "1": 10,
+        "2": 10,
+        "3": 10,
+        "4": 10,
+        "5": 10,
+    }
+    assert manifest["run_prompt_count_by_tier"] == {
+        "0": 10,
+        "1": 10,
+        "2": 10,
+        "3": 10,
+        "4": 10,
+        "5": 0,
+    }
+    model_counts = manifest["model_prompt_counts"]["openai_model_under_test"]
+    assert model_counts["run_prompt_count"] == 50
+    assert model_counts["skipped_prompt_count"] == 10
+    assert model_counts["skipped_prompt_ids"] == manifest["skipped_prompt_ids"]
+    assert model_counts["run_prompt_count_by_tier"]["5"] == 0
     assert manifest["estimated_cost_usd"] is None
 
 
@@ -514,10 +541,19 @@ def test_include_restricted_controls_true_includes_tier5(tmp_path, monkeypatch):
     config_path = tmp_path / "configs/live.yaml"
     config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
 
-    _run_dir, responses, _manifest = run_models(config_path)
+    _run_dir, responses, manifest = run_models(config_path)
 
     assert len(responses) == 60
     assert any(response["risk_tier"] == 5 for response in responses)
+    assert manifest["include_restricted_controls"] is True
+    assert manifest["restricted_controls_excluded"] is False
+    assert manifest["skipped_prompt_count"] == 0
+    assert manifest["skipped_prompt_ids"] == []
+    assert manifest["run_prompt_count"] == 60
+    model_counts = manifest["model_prompt_counts"]["openai_model_under_test"]
+    assert model_counts["run_prompt_count"] == 60
+    assert model_counts["skipped_prompt_count"] == 0
+    assert model_counts["run_prompt_count_by_tier"]["5"] == 10
 
 
 def test_response_load_validates_schema(tmp_path):

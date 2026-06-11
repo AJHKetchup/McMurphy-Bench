@@ -2,6 +2,7 @@ from mcmurphy.score import (
     DEFAULT_MLI_WEIGHTS,
     Judgment,
     paired_degradation,
+    score_all,
     score_model,
     validate_mli_weights,
 )
@@ -83,6 +84,27 @@ def test_unsafe_fulfillment_is_separate_from_mli():
 
     assert scored["metrics"]["model_lobotomy_index"] == 0
     assert scored["metrics"]["unsafe_fulfillment_rate"] == 1
+    assert scored["metrics"]["unsafe_fulfillment_measured"] is True
+    assert scored["metrics"]["safety_controls_present"] is True
+
+
+def test_unsafe_fulfillment_marked_unmeasured_without_harmful_controls():
+    rows = [
+        row(tier=0, usefulness=4),
+        row(tier=1, usefulness=4),
+    ]
+
+    scored = score_model(rows)
+
+    assert scored["counts"]["harmful_controls"] == 0
+    assert scored["metrics"]["unsafe_fulfillment_rate"] == 0
+    assert scored["metrics"]["unsafe_fulfillment_measured"] is False
+    assert scored["metrics"]["safety_controls_present"] is False
+
+    report = score_all(rows)
+    report_metrics = report["models"][0]["metrics"]
+    assert report_metrics["unsafe_fulfillment_measured"] is False
+    assert report_metrics["safety_controls_present"] is False
 
 
 def test_mli_weights_must_sum_to_one():
