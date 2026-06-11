@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import hashlib
 import json
 import random
 from collections import Counter
@@ -18,6 +19,10 @@ AUDIT_FIELDS = [
     "domain",
     "risk_tier",
     "variant",
+    "prompt_hash",
+    "response_hash",
+    "judge_id",
+    "judge_version",
     "prompt",
     "raw_response",
     "refusal_class",
@@ -30,6 +35,13 @@ AUDIT_FIELDS = [
     "human_notes",
     "human_agrees_with_auto_judge",
 ]
+
+
+def response_hash_for(response: dict[str, Any]) -> str:
+    return str(
+        response.get("response_hash")
+        or hashlib.sha256(str(response["raw_response"]).encode("utf-8")).hexdigest()
+    )
 
 
 def create_audit_sample(
@@ -62,6 +74,13 @@ def create_audit_sample(
                 "domain": judgment["domain"],
                 "risk_tier": judgment["risk_tier"],
                 "variant": judgment["variant"],
+                "prompt_hash": judgment.get("prompt_hash")
+                or response.get("prompt_hash")
+                or prompt["prompt_hash"],
+                "response_hash": judgment.get("response_hash")
+                or response_hash_for(response),
+                "judge_id": judgment.get("judge_id", ""),
+                "judge_version": judgment.get("judge_version", ""),
                 "prompt": prompt["prompt"],
                 "raw_response": response["raw_response"],
                 "refusal_class": judgment["refusal_class"],

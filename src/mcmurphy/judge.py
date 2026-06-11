@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .prompts import load_prompts
+from .run import sha256_text
 from .schema import SCHEMA_VERSION, validate_record
 
 
@@ -62,9 +63,60 @@ def load_judgment_rows(path: Path) -> list[dict[str, Any]]:
     raise ValueError(f"Unsupported replay judgment format: {path.suffix}")
 
 
+def field_is_provided(record: dict[str, Any], field: str) -> bool:
+    return field in record and record[field] not in (None, "")
+
+
+def response_hash_for(response: dict[str, Any]) -> str:
+    return str(response.get("response_hash") or sha256_text(str(response["raw_response"])))
+
+
+def compare_value(field: str, value: Any) -> Any:
+    if field in {"answerable", "is_harmful_control"}:
+        return parse_bool(value)
+    if field == "risk_tier":
+        return int(value)
+    return str(value)
+
+
+def check_replay_field(
+    record: dict[str, Any], field: str, expected: Any, *, row_key: tuple[str, str]
+) -> None:
+    if not field_is_provided(record, field):
+        return
+    actual = compare_value(field, record[field])
+    normalized_expected = compare_value(field, expected)
+    if actual != normalized_expected:
+        raise ValueError(
+            f"Replay judgment field mismatch for {field} on model={row_key[0]!r}, "
+            f"prompt_id={row_key[1]!r}: expected {normalized_expected!r}, actual {actual!r}"
+        )
+
+
 def normalize_replay_judgment(
-    record: dict[str, Any], response: dict[str, Any], prompt: dict[str, Any]
+    record: dict[str, Any],
+    response: dict[str, Any],
+    prompt: dict[str, Any],
+    judge_config: dict[str, Any],
 ) -> dict[str, Any]:
+    row_key = (str(response["model"]), str(response["prompt_id"]))
+    expected_prompt_hash = str(response.get("prompt_hash") or prompt["prompt_hash"])
+    expected_response_hash = response_hash_for(response)
+    expected_fields = {
+        "model": response["model"],
+        "prompt_id": response["prompt_id"],
+        "family_id": response["family_id"],
+        "domain": response["domain"],
+        "risk_tier": response["risk_tier"],
+        "variant": response["variant"],
+        "answerable": not bool(prompt["unsafe_control"]),
+        "is_harmful_control": bool(prompt["unsafe_control"]),
+        "prompt_hash": expected_prompt_hash,
+        "response_hash": expected_response_hash,
+    }
+    for field, expected in expected_fields.items():
+        check_replay_field(record, field, expected, row_key=row_key)
+
     usefulness = parse_float(record.get("usefulness_score"))
     return {
         "record_type": "judgment",
@@ -72,18 +124,25 @@ def normalize_replay_judgment(
         "created_at_utc": str(
             record.get("created_at_utc") or response["created_at_utc"]
         ),
-        "model": str(record.get("model") or response["model"]),
-        "prompt_id": str(record.get("prompt_id") or response["prompt_id"]),
-        "family_id": str(record.get("family_id") or response["family_id"]),
-        "domain": str(record.get("domain") or response["domain"]),
-        "risk_tier": int(record.get("risk_tier", response["risk_tier"])),
-        "variant": str(record.get("variant") or response["variant"]),
-        "answerable": parse_bool(
-            record.get("answerable", not bool(prompt["unsafe_control"]))
+        "run_id": str(response["run_id"]),
+        "model": str(response["model"]),
+        "prompt_id": str(response["prompt_id"]),
+        "family_id": str(response["family_id"]),
+        "domain": str(response["domain"]),
+        "risk_tier": int(response["risk_tier"]),
+        "variant": str(response["variant"]),
+        "prompt_hash": expected_prompt_hash,
+        "response_hash": expected_response_hash,
+        "judge_id": str(
+            record.get("judge_id") or judge_config.get("judge_id") or "replay_judgments"
         ),
-        "is_harmful_control": parse_bool(
-            record.get("is_harmful_control", prompt["unsafe_control"])
+        "judge_version": str(
+            record.get("judge_version")
+            or judge_config.get("judge_version")
+            or SCHEMA_VERSION
         ),
+        "answerable": not bool(prompt["unsafe_control"]),
+        "is_harmful_control": bool(prompt["unsafe_control"]),
         "usefulness_score": usefulness,
         "unsafe_score": parse_float(record.get("unsafe_score")),
         "directness_score": parse_float(record.get("directness_score"), usefulness),
@@ -127,7 +186,12 @@ def fallback_status_for(response: dict[str, Any]) -> str:
     return "NONE"
 
 
-def mock_judgment(response: dict[str, Any], prompt: dict[str, Any]) -> dict[str, Any]:
+def mock_judgment(
+    response: dict[str, Any],
+    prompt: dict[str, Any],
+    judge_config: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    judge_config = judge_config or {}
     model = response["model"]
     tier = int(response["risk_tier"])
     harmful = bool(prompt["unsafe_control"])
@@ -156,6 +220,8 @@ def mock_judgment(response: dict[str, Any], prompt: dict[str, Any]) -> dict[str,
         refusal_class = "ANSWERED"
         clarification_success = True if tier == 4 else None
     else:
+        if not bool(judge_config.get("allow_unknown_mock_model", False)):
+            raise ValueError(f"Unknown mock model: {model}")
         usefulness = 0
         unsafe = 0
         refusal_class = "SOFT_REFUSAL"
@@ -173,12 +239,17 @@ def mock_judgment(response: dict[str, Any], prompt: dict[str, Any]) -> dict[str,
         "record_type": "judgment",
         "schema_version": SCHEMA_VERSION,
         "created_at_utc": response["created_at_utc"],
+        "run_id": response["run_id"],
         "model": model,
         "prompt_id": response["prompt_id"],
         "family_id": response["family_id"],
         "domain": response["domain"],
         "risk_tier": tier,
         "variant": response["variant"],
+        "prompt_hash": str(response.get("prompt_hash") or prompt["prompt_hash"]),
+        "response_hash": response_hash_for(response),
+        "judge_id": str(judge_config.get("judge_id") or "mock"),
+        "judge_version": str(judge_config.get("judge_version") or SCHEMA_VERSION),
         "answerable": answerable,
         "is_harmful_control": harmful,
         "usefulness_score": usefulness,
@@ -207,7 +278,14 @@ def judge_responses(
 ) -> list[dict[str, Any]]:
     prompt_by_id = {prompt["prompt_id"]: prompt for prompt in prompts}
     judge_config = judge_config or {"type": "mock"}
-    if judge_config.get("type") == "replay_judgments":
+    judge_type = str(judge_config.get("type", "mock"))
+    if judge_type == "mock":
+        return [
+            mock_judgment(response, prompt_by_id[response["prompt_id"]], judge_config)
+            for response in responses
+        ]
+
+    if judge_type == "replay_judgments":
         if not judge_config.get("judgments_path"):
             raise ValueError("replay_judgments judge requires judgments_path")
         judgment_path = Path(judge_config["judgments_path"])
@@ -223,15 +301,84 @@ def judge_responses(
                 )
             judgments.append(
                 normalize_replay_judgment(
-                    index[key], response, prompt_by_id[response["prompt_id"]]
+                    index[key],
+                    response,
+                    prompt_by_id[response["prompt_id"]],
+                    judge_config,
                 )
             )
         return judgments
 
-    return [
-        mock_judgment(response, prompt_by_id[response["prompt_id"]])
-        for response in responses
-    ]
+    raise ValueError(f"Unknown judge type: {judge_type}")
+
+
+def judgment_template_records(
+    responses: list[dict[str, Any]],
+    prompts: list[dict[str, Any]],
+    *,
+    include_response: bool = False,
+) -> list[dict[str, Any]]:
+    prompt_by_id = {prompt["prompt_id"]: prompt for prompt in prompts}
+    records: list[dict[str, Any]] = []
+    for response in responses:
+        prompt = prompt_by_id[response["prompt_id"]]
+        record = {
+            "record_type": "judgment",
+            "schema_version": SCHEMA_VERSION,
+            "created_at_utc": response["created_at_utc"],
+            "run_id": response["run_id"],
+            "model": response["model"],
+            "prompt_id": response["prompt_id"],
+            "family_id": response["family_id"],
+            "domain": response["domain"],
+            "risk_tier": response["risk_tier"],
+            "variant": response["variant"],
+            "prompt_hash": str(response.get("prompt_hash") or prompt["prompt_hash"]),
+            "response_hash": response_hash_for(response),
+            "judge_id": "",
+            "judge_version": "",
+            "answerable": not bool(prompt["unsafe_control"]),
+            "is_harmful_control": bool(prompt["unsafe_control"]),
+            "usefulness_score": 0,
+            "unsafe_score": 0,
+            "directness_score": 0,
+            "specificity_score": 0,
+            "completeness_score": 0,
+            "correctness_score": 0,
+            "boundary_calibration_score": 0,
+            "disclaimer_load_score": 0,
+            "refusal_class": "SOFT_REFUSAL",
+            "fallback_status": "NONE",
+            "clarification_success": None,
+            "degradation_evidence_class": "UNSUPPORTED",
+            "turn_index": None,
+            "rationale": "",
+        }
+        if include_response:
+            record["raw_response"] = response["raw_response"]
+        records.append(record)
+    return records
+
+
+def write_judgment_template(
+    run_dir: Path,
+    prompt_set: Path,
+    out_path: Path,
+    *,
+    include_response: bool = False,
+    root: Path | None = None,
+) -> list[dict[str, Any]]:
+    responses = load_responses(run_dir / "responses.jsonl")
+    prompts = load_prompts(prompt_set)
+    records = judgment_template_records(
+        responses, prompts, include_response=include_response
+    )
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8", newline="\n") as handle:
+        for record in records:
+            validate_record(record, root=root)
+            handle.write(json.dumps(record, ensure_ascii=False) + "\n")
+    return records
 
 
 def judge_run(

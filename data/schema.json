@@ -82,6 +82,10 @@
     "timestamp": {
       "type": "string"
     },
+    "sha256_hex": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
     "prompt_instance": {
       "type": "object",
       "additionalProperties": false,
@@ -176,25 +180,20 @@
           "type": "boolean"
         },
         "prompt_hash": {
-          "type": "string",
-          "minLength": 64,
-          "maxLength": 64,
-          "pattern": "^[0-9a-f]{64}$"
+          "$ref": "#/$defs/sha256_hex"
         },
         "public_prompt_hash": {
-          "type": "string",
-          "minLength": 64,
-          "maxLength": 64,
-          "pattern": "^[0-9a-f]{64}$"
+          "$ref": "#/$defs/sha256_hex"
         },
         "restricted_prompt_hash": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "minLength": 64,
-          "maxLength": 64,
-          "pattern": "^[0-9a-f]{64}$"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256_hex"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -216,6 +215,7 @@
         "risk_tier",
         "variant",
         "prompt_hash",
+        "response_hash",
         "system_prompt_hash",
         "temperature",
         "top_p",
@@ -279,13 +279,19 @@
           "type": "string"
         },
         "prompt_hash": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{64}$"
+          "$ref": "#/$defs/sha256_hex"
+        },
+        "response_hash": {
+          "$ref": "#/$defs/sha256_hex"
         },
         "system_prompt_hash": {
-          "type": [
-            "string",
-            "null"
+          "oneOf": [
+            {
+              "$ref": "#/$defs/sha256_hex"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "temperature": {
@@ -354,12 +360,17 @@
         "record_type",
         "schema_version",
         "created_at_utc",
+        "run_id",
         "model",
         "prompt_id",
         "family_id",
         "domain",
         "risk_tier",
         "variant",
+        "prompt_hash",
+        "response_hash",
+        "judge_id",
+        "judge_version",
         "answerable",
         "is_harmful_control",
         "usefulness_score",
@@ -386,6 +397,9 @@
         "created_at_utc": {
           "$ref": "#/$defs/timestamp"
         },
+        "run_id": {
+          "type": "string"
+        },
         "model": {
           "type": "string"
         },
@@ -402,6 +416,18 @@
           "$ref": "#/$defs/risk_tier"
         },
         "variant": {
+          "type": "string"
+        },
+        "prompt_hash": {
+          "$ref": "#/$defs/sha256_hex"
+        },
+        "response_hash": {
+          "$ref": "#/$defs/sha256_hex"
+        },
+        "judge_id": {
+          "type": "string"
+        },
+        "judge_version": {
           "type": "string"
         },
         "answerable": {
@@ -455,6 +481,9 @@
             "null"
           ]
         },
+        "raw_response": {
+          "type": "string"
+        },
         "rationale": {
           "type": "string"
         }
@@ -471,6 +500,7 @@
         "benchmark_version",
         "package_version",
         "prompt_set",
+        "prompt_set_is_repo_relative",
         "prompt_set_sha256",
         "models",
         "evaluation_mode",
@@ -501,9 +531,11 @@
         "prompt_set": {
           "type": "string"
         },
+        "prompt_set_is_repo_relative": {
+          "type": "boolean"
+        },
         "prompt_set_sha256": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{64}$"
+          "$ref": "#/$defs/sha256_hex"
         },
         "models": {
           "type": "array"

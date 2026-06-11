@@ -1,3 +1,5 @@
+import csv
+import hashlib
 import json
 import shutil
 from pathlib import Path
@@ -10,6 +12,21 @@ from mcmurphy.report import write_report
 from mcmurphy.run import config_root, run_models
 from mcmurphy.schema import validate_record
 from mcmurphy.score import read_judgments, score_model
+
+
+def read_jsonl(path: Path) -> list[dict]:
+    return [
+        json.loads(line)
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+
+def write_jsonl(path: Path, records: list[dict]) -> None:
+    path.write_text(
+        "\n".join(json.dumps(record) for record in records) + "\n",
+        encoding="utf-8",
+    )
 
 
 def copy_core_files(tmp_path: Path) -> None:
@@ -89,8 +106,6 @@ def test_audit_regenerates_from_run_dir_and_report_path(tmp_path):
 
 
 def sampled_pairs(path: Path) -> list[tuple[str, str]]:
-    import csv
-
     with path.open("r", encoding="utf-8-sig", newline="") as handle:
         rows = list(csv.DictReader(handle))
     return [(row["model"], row["prompt_id"]) for row in rows]
@@ -169,6 +184,38 @@ def test_invalid_generated_records_fail_validation(tmp_path):
         validate_record(bad_response, root=tmp_path)
 
 
+def test_unknown_judge_type_fails(tmp_path):
+    copy_core_files(tmp_path)
+    config = yaml.safe_load(Path("configs/run.example.yaml").read_text())
+    config["run_id"] = "run_unknown_judge"
+    config["judge"] = {"type": "typo_judge"}
+    config_path = tmp_path / "configs/run.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Unknown judge type: typo_judge"):
+        main(["loop", str(config_path)])
+
+
+def test_mock_judge_unknown_model_fails_by_default(tmp_path):
+    copy_core_files(tmp_path)
+    config = yaml.safe_load(Path("configs/run.example.yaml").read_text())
+    config["run_id"] = "run_unknown_mock_model"
+    config["models"] = [
+        {
+            "name": "real_model_name",
+            "provider": "mock",
+            "adapter": "mock_good",
+            "model_version": "test",
+        }
+    ]
+    config["judge"] = {"type": "mock"}
+    config_path = tmp_path / "configs/run.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Unknown mock model: real_model_name"):
+        main(["loop", str(config_path)])
+
+
 def test_file_replay_missing_prompt_failure(tmp_path):
     copy_replay_files(tmp_path)
     lines = Path("tests/fixtures/replay_responses.jsonl").read_text().splitlines()
@@ -185,6 +232,65 @@ def test_file_replay_missing_prompt_failure(tmp_path):
         main(["loop", str(config_path)])
 
 
+def test_replay_judgment_family_id_mismatch_fails(tmp_path):
+    copy_replay_files(tmp_path)
+    judgment_path = tmp_path / "tests/fixtures/replay_judgments.jsonl"
+    judgments = read_jsonl(judgment_path)
+    judgments[0]["family_id"] = "wrong_family"
+    write_jsonl(judgment_path, judgments)
+    config = yaml.safe_load(Path("configs/replay.example.yaml").read_text())
+    config["run_id"] = "run_replay_family_mismatch"
+    config_path = tmp_path / "configs/replay.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="field mismatch for family_id"):
+        main(["loop", str(config_path)])
+
+
+def test_replay_judgment_response_hash_mismatch_fails(tmp_path):
+    copy_replay_files(tmp_path)
+    judgment_path = tmp_path / "tests/fixtures/replay_judgments.jsonl"
+    judgments = read_jsonl(judgment_path)
+    judgments[0]["response_hash"] = "0" * 64
+    write_jsonl(judgment_path, judgments)
+    config = yaml.safe_load(Path("configs/replay.example.yaml").read_text())
+    config["run_id"] = "run_replay_response_hash_mismatch"
+    config_path = tmp_path / "configs/replay.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="field mismatch for response_hash"):
+        main(["loop", str(config_path)])
+
+
+def test_replay_judgment_missing_response_hash_is_filled(tmp_path):
+    copy_replay_files(tmp_path)
+    judgment_path = tmp_path / "tests/fixtures/replay_judgments.jsonl"
+    judgments = read_jsonl(judgment_path)
+    for judgment in judgments:
+        judgment.pop("response_hash")
+    write_jsonl(judgment_path, judgments)
+    config = yaml.safe_load(Path("configs/replay.example.yaml").read_text())
+    config["run_id"] = "run_replay_filled_hash"
+    config_path = tmp_path / "configs/replay.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    assert main(["loop", str(config_path)]) == 0
+
+    run_dir = tmp_path / "reports/run_replay_filled_hash"
+    responses = {
+        (response["model"], response["prompt_id"]): response
+        for response in read_jsonl(run_dir / "responses.jsonl")
+    }
+    generated_judgments = read_jsonl(run_dir / "judgments.jsonl")
+    for judgment in generated_judgments:
+        response = responses[(judgment["model"], judgment["prompt_id"])]
+        expected_hash = hashlib.sha256(
+            response["raw_response"].encode("utf-8")
+        ).hexdigest()
+        assert judgment["response_hash"] == expected_hash
+        assert judgment["judge_id"] == "fixture_replay_judge"
+
+
 def test_file_replay_successful_loop(tmp_path):
     copy_replay_files(tmp_path)
     config = yaml.safe_load(Path("configs/replay.example.yaml").read_text())
@@ -196,16 +302,87 @@ def test_file_replay_successful_loop(tmp_path):
 
     run_dir = tmp_path / "reports/run_replay_success"
     report = json.loads((run_dir / "report.json").read_text(encoding="utf-8"))
-    judgments = [
-        json.loads(line)
-        for line in (run_dir / "judgments.jsonl").read_text(encoding="utf-8").splitlines()
-        if line.strip()
-    ]
+    judgments = read_jsonl(run_dir / "judgments.jsonl")
     assert (run_dir / "responses.jsonl").exists()
     assert (run_dir / "judgments.jsonl").exists()
     assert report["run_manifest"]["run_id"] == "run_replay_success"
     assert judgments[0]["usefulness_score"] == 3.75
+    assert judgments[0]["judge_id"] == "fixture_replay_judge"
     assert report["models"][0]["metrics"]["safe_utility"] > 90
+
+
+def test_judgment_template_emits_one_record_per_response(tmp_path):
+    copy_core_files(tmp_path)
+    config = yaml.safe_load(Path("configs/run.example.yaml").read_text())
+    config["run_id"] = "run_template"
+    config_path = tmp_path / "configs/run.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    assert main(["loop", str(config_path)]) == 0
+
+    run_dir = tmp_path / "reports/run_template"
+    out_path = run_dir / "judgment_template.jsonl"
+    assert main(["judgment-template", str(run_dir), "--out", str(out_path)]) == 0
+
+    responses = read_jsonl(run_dir / "responses.jsonl")
+    template = read_jsonl(out_path)
+    assert len(template) == len(responses)
+    assert "raw_response" not in template[0]
+    assert template[0]["run_id"] == "run_template"
+    assert template[0]["prompt_hash"]
+    assert template[0]["response_hash"]
+    assert template[0]["judge_id"] == ""
+
+
+def test_external_prompt_set_path_does_not_crash_manifest_writing(tmp_path):
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    copy_core_files(repo_root)
+    external = tmp_path / "external"
+    external.mkdir()
+    external_prompt_set = external / "seed_prompts.jsonl"
+    shutil.copy(Path("data/seed_prompts.jsonl"), external_prompt_set)
+
+    config = yaml.safe_load(Path("configs/run.example.yaml").read_text())
+    config["run_id"] = "run_external_prompt_set"
+    config["prompt_set"] = str(external_prompt_set)
+    config_path = repo_root / "configs/run.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    run_dir, _responses, manifest = run_models(config_path)
+
+    assert run_dir == repo_root / "reports/run_external_prompt_set"
+    assert manifest["prompt_set"] == str(external_prompt_set)
+    assert manifest["prompt_set_is_repo_relative"] is False
+
+
+def test_audit_sample_includes_judgment_provenance_fields(tmp_path):
+    copy_core_files(tmp_path)
+    config = yaml.safe_load(Path("configs/run.example.yaml").read_text())
+    config["run_id"] = "run_audit_provenance"
+    config_path = tmp_path / "configs/run.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    assert main(["loop", str(config_path)]) == 0
+    run_dir = tmp_path / "reports/run_audit_provenance"
+    assert main(["audit", str(run_dir), "--sample-rate", "0.15", "--seed", "1729"]) == 0
+
+    with (run_dir / "audit_sample.csv").open(
+        "r", encoding="utf-8-sig", newline=""
+    ) as handle:
+        rows = list(csv.DictReader(handle))
+    jsonl_rows = read_jsonl(run_dir / "audit_sample.jsonl")
+    expected_fields = {
+        "run_id",
+        "prompt_hash",
+        "response_hash",
+        "judge_id",
+        "judge_version",
+    }
+    assert expected_fields.issubset(rows[0])
+    assert expected_fields.issubset(jsonl_rows[0])
+    assert rows[0]["run_id"] == "run_audit_provenance"
+    assert rows[0]["judge_id"] == "mock"
 
 
 def test_non_hex_prompt_hash_rejected(tmp_path):

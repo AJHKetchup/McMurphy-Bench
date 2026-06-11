@@ -10,7 +10,7 @@ from typing import Any
 import yaml
 
 from .audit import audit_agreement, create_audit_sample
-from .judge import judge_run, load_responses
+from .judge import judge_run, load_responses, write_judgment_template
 from .prompts import load_prompts, validate_prompt_file
 from .report import write_report
 from .run import config_root, load_run_config, resolve_config_path, run_models
@@ -82,6 +82,10 @@ def resolve_audit_prompt_set(run_dir: Path, manifest: dict[str, Any]) -> Path:
     prompt_set = Path(manifest["prompt_set"])
     if prompt_set.is_absolute():
         return prompt_set
+    if manifest.get("prompt_set_is_repo_relative") is True:
+        candidate = repository_root(run_dir) / prompt_set
+        if candidate.exists():
+            return candidate.resolve()
     candidates = [
         run_dir.parent.parent / prompt_set,
         repository_root(run_dir) / prompt_set,
@@ -139,6 +143,27 @@ def command_audit(args: argparse.Namespace) -> int:
 
 def command_audit_agreement(args: argparse.Namespace) -> int:
     print(json.dumps(audit_agreement(Path(args.completed_csv)), indent=2))
+    return 0
+
+
+def command_judgment_template(args: argparse.Namespace) -> int:
+    run_dir = Path(args.run_dir).resolve()
+    manifest_path = run_dir / "manifest.json"
+    responses_path = run_dir / "responses.jsonl"
+    for required in (manifest_path, responses_path):
+        if not required.exists():
+            raise SystemExit(f"Judgment template input missing required file: {required}")
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    prompt_set = resolve_audit_prompt_set(run_dir, manifest)
+    records = write_judgment_template(
+        run_dir,
+        prompt_set,
+        Path(args.out),
+        include_response=bool(args.include_response),
+        root=repository_root(run_dir),
+    )
+    print(f"Wrote {len(records)} judgment template records to {args.out}")
     return 0
 
 
@@ -210,6 +235,12 @@ def build_parser() -> argparse.ArgumentParser:
     audit_agree = subcommands.add_parser("audit-agreement")
     audit_agree.add_argument("completed_csv")
     audit_agree.set_defaults(func=command_audit_agreement)
+
+    judgment_template = subcommands.add_parser("judgment-template")
+    judgment_template.add_argument("run_dir")
+    judgment_template.add_argument("--out", required=True)
+    judgment_template.add_argument("--include-response", action="store_true")
+    judgment_template.set_defaults(func=command_judgment_template)
 
     loop = subcommands.add_parser("loop")
     loop.add_argument("config")

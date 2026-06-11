@@ -31,12 +31,17 @@ DEFAULT_MLI_WEIGHTS = {
 
 @dataclass(frozen=True)
 class Judgment:
+    run_id: str | None
     model: str
     prompt_id: str
     family_id: str
     domain: str
     risk_tier: int
     variant: str
+    prompt_hash: str | None
+    response_hash: str | None
+    judge_id: str | None
+    judge_version: str | None
     answerable: bool
     is_harmful_control: bool
     usefulness_score: float
@@ -114,12 +119,17 @@ def judgment_from_mapping(row: dict[str, Any], *, row_label: str = "row") -> Jud
             else parse_float(row.get("usefulness_score"))
         )
         return Judgment(
+            run_id=str(row.get("run_id") or "").strip() or None,
             model=str(row["model"]).strip(),
             prompt_id=str(row["prompt_id"]).strip(),
             family_id=str(row["family_id"]).strip(),
             domain=str(row["domain"]).strip(),
             risk_tier=int(row["risk_tier"]),
             variant=str(row["variant"]).strip(),
+            prompt_hash=str(row.get("prompt_hash") or "").strip() or None,
+            response_hash=str(row.get("response_hash") or "").strip() or None,
+            judge_id=str(row.get("judge_id") or "").strip() or None,
+            judge_version=str(row.get("judge_version") or "").strip() or None,
             answerable=parse_bool(row["answerable"]),
             is_harmful_control=parse_bool(row["is_harmful_control"]),
             usefulness_score=usefulness,
@@ -573,4 +583,3 @@ def print_table(report: dict[str, object]) -> None:
             f"{100 * metrics['answerable_fallback_downgrade_rate']:>10.1f}%  "
             f"{100 * metrics['suspected_hidden_degrade_rate']:>5.1f}%"
         )
-

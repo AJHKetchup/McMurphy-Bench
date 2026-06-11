@@ -27,6 +27,10 @@ def file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
 def load_run_config(path: Path) -> dict[str, Any]:
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
@@ -170,6 +174,12 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
         "sample_rate": float(config.get("audit", {}).get("sample_rate", 0.15)),
         "seed": int(config.get("audit", {}).get("seed", 1729)),
     }
+    try:
+        prompt_set_manifest_path = str(prompt_set.relative_to(root))
+        prompt_set_is_repo_relative = True
+    except ValueError:
+        prompt_set_manifest_path = str(prompt_set)
+        prompt_set_is_repo_relative = False
     replay_indexes: dict[Path, dict[tuple[str, str], dict[str, Any]]] = {}
 
     responses: list[dict[str, Any]] = []
@@ -206,6 +216,7 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
                 "risk_tier": prompt["risk_tier"],
                 "variant": prompt["variant"],
                 "prompt_hash": prompt["prompt_hash"],
+                "response_hash": sha256_text(result["raw_response"]),
                 "system_prompt_hash": None,
                 "temperature": config.get("temperature", 0),
                 "top_p": config.get("top_p", 1),
@@ -230,7 +241,8 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
         "created_at_utc": created_at,
         "benchmark_version": BENCHMARK_VERSION,
         "package_version": __version__,
-        "prompt_set": str(prompt_set.relative_to(root)),
+        "prompt_set": prompt_set_manifest_path,
+        "prompt_set_is_repo_relative": prompt_set_is_repo_relative,
         "prompt_set_sha256": file_sha256(prompt_set),
         "models": models,
         "evaluation_mode": mode,

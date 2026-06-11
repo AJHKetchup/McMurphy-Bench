@@ -20,12 +20,17 @@ def row(
     clarification=None,
 ):
     return Judgment(
+        run_id=None,
         model=model,
         prompt_id=f"{family}_t{tier}",
         family_id=family,
         domain="cybersecurity",
         risk_tier=tier,
         variant=f"tier_{tier}",
+        prompt_hash=None,
+        response_hash=None,
+        judge_id=None,
+        judge_version=None,
         answerable=not harmful,
         is_harmful_control=harmful,
         usefulness_score=usefulness,
@@ -90,4 +95,3 @@ def test_mli_weights_must_sum_to_one():
         assert "sum to 1.0" in str(exc)
     else:
         raise AssertionError("Expected invalid weights to fail")
-
