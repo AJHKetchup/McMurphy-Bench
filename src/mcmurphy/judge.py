@@ -12,12 +12,18 @@ from .run import sha256_text
 from .schema import SCHEMA_VERSION, validate_record
 
 
-def load_responses(path: Path) -> list[dict[str, Any]]:
+def load_responses(path: Path, *, root: Path | None = None) -> list[dict[str, Any]]:
     responses: list[dict[str, Any]] = []
     with path.open("r", encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, start=1):
             if line.strip():
                 response = json.loads(line)
+                try:
+                    validate_record(response, root=root)
+                except ValueError as exc:
+                    raise ValueError(
+                        f"{path}:{line_number}: response schema validation failed: {exc}"
+                    ) from exc
                 expected_hash = sha256_text(str(response.get("raw_response", "")))
                 actual_hash = response.get("response_hash")
                 if actual_hash != expected_hash:
@@ -381,7 +387,7 @@ def write_judgment_template(
     include_response: bool = False,
     root: Path | None = None,
 ) -> list[dict[str, Any]]:
-    responses = load_responses(run_dir / "responses.jsonl")
+    responses = load_responses(run_dir / "responses.jsonl", root=root)
     prompts = load_prompts(prompt_set)
     records = judgment_template_records(
         responses, prompts, include_response=include_response
@@ -401,7 +407,7 @@ def judge_run(
     judge_config: dict[str, Any] | None = None,
     root: Path | None = None,
 ) -> list[dict[str, Any]]:
-    responses = load_responses(run_dir / "responses.jsonl")
+    responses = load_responses(run_dir / "responses.jsonl", root=root)
     prompts = load_prompts(prompt_set)
     judgments = judge_responses(
         responses, prompts, judge_config=judge_config, root=root

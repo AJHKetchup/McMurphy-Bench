@@ -121,7 +121,7 @@ def command_audit(args: argparse.Namespace) -> int:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     prompt_set = resolve_audit_prompt_set(run_dir, manifest)
     prompts = load_prompts(prompt_set)
-    responses = load_responses(responses_path)
+    responses = load_responses(responses_path, root=repository_root(run_dir))
     judgments = load_jsonl_dicts(judgments_path)
     manifest_audit = manifest.get("audit", {})
     sample_rate = (

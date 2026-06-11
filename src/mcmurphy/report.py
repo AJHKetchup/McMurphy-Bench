@@ -34,6 +34,10 @@ def write_report(
             "evaluation_mode": manifest.get("evaluation_mode"),
             "judge": manifest.get("judge"),
             "audit": manifest.get("audit"),
+            "estimated_input_tokens": manifest.get("estimated_input_tokens"),
+            "estimated_output_tokens": manifest.get("estimated_output_tokens"),
+            "estimated_cost_usd": manifest.get("estimated_cost_usd"),
+            "pricing_notes": manifest.get("pricing_notes"),
         }
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(report, indent=2), encoding="utf-8")

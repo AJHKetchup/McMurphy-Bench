@@ -18,6 +18,7 @@ This repo contains a working v0.2 benchmark scaffold:
 - `src/mcmurphy/`: installable benchmark package.
 - `src/mcmurphy_score.py`: backward-compatible legacy scorer wrapper.
 - `configs/run.example.yaml`: mock run-loop config.
+- `configs/live.example.yaml`: placeholder live provider response-collection config.
 - `rubrics/default_judge_rubric.md`: default auto-judge rubric.
 - `reports/sample_report.json`: generated sample report.
 
@@ -66,6 +67,12 @@ Run a file replay fixture:
 mcmurphy loop configs/replay.example.yaml
 ```
 
+Collect live provider responses only after editing placeholder values and setting the named environment variable:
+
+```bash
+mcmurphy run configs/live.example.yaml
+```
+
 Generate a blank judgment handoff template from a run bundle:
 
 ```bash
@@ -92,6 +99,8 @@ reports/<run_id>/audit_sample.jsonl
 - `judgment_template.jsonl`: optional handoff file for human or external LLM judging. Records use `judgment_status="template"` and blank/default rubric fields. The scorer rejects these records by default; `mcmurphy score --allow-template-records` exists only for debugging.
 - `judgments.jsonl`: completed auto, replayed, human, or external judgments used for scoring. Generated records use `judgment_status="completed"` plus prompt, response, and judge provenance fields.
 - `audit_sample.csv` / `audit_sample.jsonl`: sampled completed judgments joined with prompts and raw responses for human audit review. These files include response and judge provenance so sampled rows can be traced back to the run bundle.
+
+Live provider adapters require `live: true` on each non-mock, non-replay model entry. They skip restricted Tier 5 controls unless `include_restricted_controls: true` is set explicitly.
 
 ## Judgment CSV Format
 

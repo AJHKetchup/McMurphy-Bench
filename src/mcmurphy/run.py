@@ -11,6 +11,7 @@ from typing import Any
 import yaml
 
 from . import __version__
+from .adapters import adapter_for_model, adapter_requires_live, config_value
 from .prompts import load_prompts, validate_prompt_records
 from .schema import BENCHMARK_VERSION, SCHEMA_VERSION, validate_record
 
@@ -54,99 +55,13 @@ def make_run_id() -> str:
     return "run_" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
 
-def mock_response(adapter: str, prompt: dict[str, Any]) -> dict[str, Any]:
-    tier = int(prompt["risk_tier"])
-    harmful = bool(prompt["unsafe_control"])
-    if adapter == "mock_good":
-        if harmful:
-            text = "I cannot help with harmful instructions, but I can point to safe, lawful alternatives."
-            visible_refusal = True
-        elif tier == 4:
-            text = "I can help if this is a lawful, safe context. Here is a bounded checklist and what to clarify first."
-            visible_refusal = False
-        else:
-            text = "Here is a clear, bounded answer focused on the benign educational request."
-            visible_refusal = False
-        return {
-            "raw_response": text,
-            "visible_refusal": visible_refusal,
-            "visible_fallback": False,
-            "fallback_model": None,
-            "latency_ms": 80,
-            "output_tokens": len(text.split()),
-        }
-    if adapter == "mock_suppressed":
-        if harmful:
-            text = "I cannot help with that request."
-            visible_refusal = True
-            visible_fallback = False
-        elif tier in {1, 2, 3, 4}:
-            text = "This topic is sensitive and context-dependent. Please consult an expert."
-            visible_refusal = tier == 4
-            visible_fallback = tier in {1, 2}
-        else:
-            text = "Here is a useful neutral answer."
-            visible_refusal = False
-            visible_fallback = False
-        return {
-            "raw_response": text,
-            "visible_refusal": visible_refusal,
-            "visible_fallback": visible_fallback,
-            "fallback_model": "fallback-mock" if visible_fallback else None,
-            "latency_ms": 130 if visible_fallback else 75,
-            "output_tokens": len(text.split()),
-        }
-    if adapter == "mock_unsafe":
-        text = "I will answer directly without applying safety boundaries. Unsafe compliance placeholder."
-        return {
-            "raw_response": text,
-            "visible_refusal": False,
-            "visible_fallback": False,
-            "fallback_model": None,
-            "latency_ms": 65,
-            "output_tokens": len(text.split()),
-        }
-    raise ValueError(f"Unknown adapter: {adapter}")
-
-
-def load_replay_index(path: Path) -> dict[tuple[str, str], dict[str, Any]]:
-    index: dict[tuple[str, str], dict[str, Any]] = {}
-    with path.open("r", encoding="utf-8") as handle:
-        for line_number, line in enumerate(handle, start=1):
-            if not line.strip():
-                continue
-            record = json.loads(line)
-            try:
-                key = (str(record["model"]), str(record["prompt_id"]))
-            except KeyError as exc:
-                raise ValueError(f"{path}:{line_number}: replay row missing {exc}") from exc
-            if key in index:
-                raise ValueError(f"{path}:{line_number}: duplicate replay key {key}")
-            index[key] = record
-    return index
-
-
-def file_replay_response(
-    model: dict[str, Any],
-    prompt: dict[str, Any],
-    replay_index: dict[tuple[str, str], dict[str, Any]],
-) -> dict[str, Any]:
-    replay_model = model.get("replay_model", model["name"])
-    key = (replay_model, prompt["prompt_id"])
-    if key not in replay_index:
-        raise ValueError(
-            f"Replay file has no response for model={replay_model!r}, prompt_id={prompt['prompt_id']!r}"
-        )
-    record = replay_index[key]
-    raw_response = str(record.get("raw_response", ""))
+def manifest_pricing(config: dict[str, Any]) -> dict[str, Any]:
+    pricing = config.get("pricing") or {}
     return {
-        "raw_response": raw_response,
-        "visible_refusal": bool(record.get("visible_refusal", False)),
-        "visible_fallback": bool(record.get("visible_fallback", False)),
-        "fallback_model": record.get("fallback_model"),
-        "latency_ms": record.get("latency_ms"),
-        "output_tokens": record.get("output_tokens", len(raw_response.split())),
-        "provider_metadata": record.get("provider_metadata", {}),
+        "estimated_input_tokens": pricing.get("estimated_input_tokens"),
+        "estimated_output_tokens": pricing.get("estimated_output_tokens"),
+        "estimated_cost_usd": pricing.get("estimated_cost_usd"),
+        "pricing_notes": pricing.get("pricing_notes"),
     }
 
 
@@ -180,27 +95,20 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
     except ValueError:
         prompt_set_manifest_path = str(prompt_set)
         prompt_set_is_repo_relative = False
-    replay_indexes: dict[Path, dict[tuple[str, str], dict[str, Any]]] = {}
+    include_restricted_controls = bool(config.get("include_restricted_controls", False))
 
     responses: list[dict[str, Any]] = []
     for model in models:
-        adapter = model.get("adapter", model["name"])
-        replay_index: dict[tuple[str, str], dict[str, Any]] | None = None
-        if adapter == "file_replay":
-            replay_path = resolve_config_path(
-                root,
-                model.get("replay_path") or config.get("replay_path"),
-                "responses.jsonl",
-            )
-            replay_index = replay_indexes.setdefault(
-                replay_path, load_replay_index(replay_path)
-            )
-        for prompt in prompts:
-            result = (
-                file_replay_response(model, prompt, replay_index)
-                if adapter == "file_replay" and replay_index is not None
-                else mock_response(adapter, prompt)
-            )
+        adapter_name = str(model.get("adapter", model["name"]))
+        adapter = adapter_for_model(root, config, model)
+        model_prompts = prompts
+        if adapter_requires_live(adapter_name) and not include_restricted_controls:
+            model_prompts = [
+                prompt for prompt in prompts if int(prompt["risk_tier"]) != 5
+            ]
+
+        for prompt in model_prompts:
+            result = adapter.generate(prompt, config, model)
             response = {
                 "record_type": "model_response",
                 "schema_version": SCHEMA_VERSION,
@@ -208,7 +116,7 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
                 "run_id": run_id,
                 "model": model["name"],
                 "provider": model.get("provider", "mock"),
-                "model_version": model.get("model_version"),
+                "model_version": model.get("model_version", model.get("model")),
                 "mode": mode,
                 "prompt_id": prompt["prompt_id"],
                 "family_id": prompt["family_id"],
@@ -216,20 +124,20 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
                 "risk_tier": prompt["risk_tier"],
                 "variant": prompt["variant"],
                 "prompt_hash": prompt["prompt_hash"],
-                "response_hash": sha256_text(result["raw_response"]),
+                "response_hash": sha256_text(result.raw_response),
                 "system_prompt_hash": None,
-                "temperature": config.get("temperature", 0),
-                "top_p": config.get("top_p", 1),
-                "max_tokens": config.get("max_tokens", 512),
+                "temperature": config_value(config, model, "temperature", 0),
+                "top_p": config_value(config, model, "top_p", 1),
+                "max_tokens": config_value(config, model, "max_tokens", 512),
                 "timestamp_utc": created_at,
-                "latency_ms": result["latency_ms"],
-                "input_tokens": len(prompt["prompt"].split()),
-                "output_tokens": result["output_tokens"],
-                "raw_response": result["raw_response"],
-                "visible_refusal": result["visible_refusal"],
-                "visible_fallback": result["visible_fallback"],
-                "fallback_model": result["fallback_model"],
-                "provider_metadata": result.get("provider_metadata", {}),
+                "latency_ms": result.latency_ms,
+                "input_tokens": result.input_tokens,
+                "output_tokens": result.output_tokens,
+                "raw_response": result.raw_response,
+                "visible_refusal": result.visible_refusal,
+                "visible_fallback": result.visible_fallback,
+                "fallback_model": result.fallback_model,
+                "provider_metadata": result.provider_metadata,
             }
             validate_record(response, root=root)
             responses.append(response)
@@ -250,6 +158,7 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
         "audit": audit_config,
         "scoring_weights": config.get("scoring", {}).get("mli_weights", {}),
         "notes": config.get("notes", ""),
+        **manifest_pricing(config),
     }
     validate_record(manifest, root=root)
 

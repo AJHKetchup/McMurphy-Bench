@@ -578,6 +578,33 @@
         "scoring_weights": {
           "type": "object"
         },
+        "estimated_input_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "estimated_output_tokens": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "estimated_cost_usd": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "pricing_notes": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "notes": {
           "type": "string"
         }

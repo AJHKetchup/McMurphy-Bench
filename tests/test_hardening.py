@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from mcmurphy.adapters import AdapterResponse, OpenAICompatibleAdapter
 from mcmurphy.cli import main
 from mcmurphy.report import write_report
 from mcmurphy.run import config_root, run_models
@@ -34,6 +35,35 @@ def corrupt_first_response_hash(run_dir: Path) -> None:
     responses = read_jsonl(responses_path)
     responses[0]["response_hash"] = "0" * 64
     write_jsonl(responses_path, responses)
+
+
+def live_model_config(*, live=True) -> dict:
+    model = {
+        "name": "openai_model_under_test",
+        "provider": "openai",
+        "adapter": "openai_compatible",
+        "base_url": "https://api.example.invalid/v1",
+        "api_key_env": "MCMURPHY_TEST_API_KEY",
+        "model": "pilot-model",
+        "timeout": 1,
+    }
+    if live is not None:
+        model["live"] = live
+    return model
+
+
+def fake_live_generate(self, prompt_record, run_config, model_config):
+    text = f"Fixture live response for {prompt_record['prompt_id']}."
+    return AdapterResponse(
+        raw_response=text,
+        visible_refusal=False,
+        visible_fallback=False,
+        fallback_model=None,
+        latency_ms=5,
+        input_tokens=len(prompt_record["prompt"].split()),
+        output_tokens=len(text.split()),
+        provider_metadata={"fixture": True},
+    )
 
 
 def copy_core_files(tmp_path: Path) -> None:
@@ -428,6 +458,84 @@ def test_corrupted_response_hash_fails_during_judge(tmp_path):
 
     with pytest.raises(ValueError, match="response_hash mismatch"):
         main(["judge", str(judge_config_path)])
+
+
+def test_openai_compatible_fails_without_api_key_env(tmp_path, monkeypatch):
+    copy_core_files(tmp_path)
+    monkeypatch.delenv("MCMURPHY_TEST_API_KEY", raising=False)
+    config = yaml.safe_load(Path("configs/run.example.yaml").read_text())
+    config["run_id"] = "run_missing_key"
+    config["models"] = [live_model_config(live=True)]
+    config_path = tmp_path / "configs/live.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Missing API key environment variable"):
+        run_models(config_path)
+
+
+def test_live_adapter_requires_live_true(tmp_path, monkeypatch):
+    copy_core_files(tmp_path)
+    monkeypatch.setenv("MCMURPHY_TEST_API_KEY", "fake-key")
+    config = yaml.safe_load(Path("configs/run.example.yaml").read_text())
+    config["run_id"] = "run_live_required"
+    config["models"] = [live_model_config(live=None)]
+    config_path = tmp_path / "configs/live.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="requires live: true"):
+        run_models(config_path)
+
+
+def test_live_adapter_skips_tier5_by_default(tmp_path, monkeypatch):
+    copy_core_files(tmp_path)
+    monkeypatch.setenv("MCMURPHY_TEST_API_KEY", "fake-key")
+    monkeypatch.setattr(OpenAICompatibleAdapter, "generate", fake_live_generate)
+    config = yaml.safe_load(Path("configs/run.example.yaml").read_text())
+    config["run_id"] = "run_live_skip_t5"
+    config["models"] = [live_model_config(live=True)]
+    config_path = tmp_path / "configs/live.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    _run_dir, responses, manifest = run_models(config_path)
+
+    assert len(responses) == 50
+    assert {response["risk_tier"] for response in responses} == {0, 1, 2, 3, 4}
+    assert manifest["estimated_cost_usd"] is None
+
+
+def test_include_restricted_controls_true_includes_tier5(tmp_path, monkeypatch):
+    copy_core_files(tmp_path)
+    monkeypatch.setenv("MCMURPHY_TEST_API_KEY", "fake-key")
+    monkeypatch.setattr(OpenAICompatibleAdapter, "generate", fake_live_generate)
+    config = yaml.safe_load(Path("configs/run.example.yaml").read_text())
+    config["run_id"] = "run_live_include_t5"
+    config["include_restricted_controls"] = True
+    config["models"] = [live_model_config(live=True)]
+    config_path = tmp_path / "configs/live.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    _run_dir, responses, _manifest = run_models(config_path)
+
+    assert len(responses) == 60
+    assert any(response["risk_tier"] == 5 for response in responses)
+
+
+def test_response_load_validates_schema(tmp_path):
+    from mcmurphy.judge import load_responses
+
+    copy_core_files(tmp_path)
+    config = yaml.safe_load(Path("configs/run.example.yaml").read_text())
+    config["run_id"] = "run_bad_response_schema"
+    config_path = tmp_path / "configs/run.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    run_dir, _responses, _manifest = run_models(config_path)
+    response_path = run_dir / "responses.jsonl"
+    response_records = read_jsonl(response_path)
+    response_records[0].pop("provider")
+    write_jsonl(response_path, response_records)
+
+    with pytest.raises(ValueError, match="response schema validation failed"):
+        load_responses(response_path, root=tmp_path)
 
 
 def test_external_prompt_set_path_does_not_crash_manifest_writing(tmp_path):
