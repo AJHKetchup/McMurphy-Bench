@@ -5,3 +5,4 @@ __pycache__/
 .DS_Store
 Thumbs.db
 reports/run_*/
+reports/ci_sample_report.json

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .prompts import load_prompts
-from .schema import SCHEMA_VERSION
+from .schema import SCHEMA_VERSION, validate_record
 
 
 def load_responses(path: Path) -> list[dict[str, Any]]:
@@ -108,12 +108,14 @@ def judge_responses(
     ]
 
 
-def judge_run(run_dir: Path, prompt_set: Path) -> list[dict[str, Any]]:
+def judge_run(
+    run_dir: Path, prompt_set: Path, *, root: Path | None = None
+) -> list[dict[str, Any]]:
     responses = load_responses(run_dir / "responses.jsonl")
     prompts = load_prompts(prompt_set)
     judgments = judge_responses(responses, prompts)
     with (run_dir / "judgments.jsonl").open("w", encoding="utf-8", newline="\n") as handle:
         for judgment in judgments:
+            validate_record(judgment, root=root)
             handle.write(json.dumps(judgment, ensure_ascii=False) + "\n")
     return judgments
-

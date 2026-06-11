@@ -5,6 +5,8 @@ from pathlib import Path
 import yaml
 
 from mcmurphy.cli import main
+from mcmurphy.judge import load_responses
+from mcmurphy.schema import validate_record
 
 
 def test_loop_smoke_outputs_run_bundle(tmp_path):
@@ -33,3 +35,8 @@ def test_loop_smoke_outputs_run_bundle(tmp_path):
     assert report["mli_weights"]
     assert "confidence_intervals" in report["models"][0]
 
+    validate_record(json.loads((run_dir / "manifest.json").read_text()), root=tmp_path)
+    for response in load_responses(run_dir / "responses.jsonl"):
+        validate_record(response, root=tmp_path)
+    for line in (run_dir / "judgments.jsonl").read_text(encoding="utf-8").splitlines():
+        validate_record(json.loads(line), root=tmp_path)

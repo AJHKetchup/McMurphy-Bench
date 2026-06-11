@@ -18,7 +18,11 @@ def write_report(
     include_ci: bool = False,
     manifest: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    ci_fn = default_confidence_intervals if include_ci else None
+    ci_fn = (
+        (lambda model_rows: default_confidence_intervals(model_rows, mli_weights=mli_weights))
+        if include_ci
+        else None
+    )
     report = score_all(rows, mli_weights=mli_weights, confidence_interval_fn=ci_fn)
     if manifest:
         report["run_manifest"] = {
@@ -33,4 +37,3 @@ def write_report(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     return report
-

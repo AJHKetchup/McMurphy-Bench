@@ -53,6 +53,19 @@ Run the mock end-to-end loop:
 mcmurphy loop configs/run.example.yaml
 ```
 
+Regenerate a human-audit packet:
+
+```bash
+mcmurphy audit reports/run_example --sample-rate 0.15
+mcmurphy audit-agreement reports/run_example/audit_sample.csv
+```
+
+Run a file replay fixture:
+
+```bash
+mcmurphy loop configs/replay.example.yaml
+```
+
 The loop validates prompts, generates mock model responses, judges them, scores the run, bootstraps confidence intervals, and emits a human-audit sample.
 
 Expected run bundle:

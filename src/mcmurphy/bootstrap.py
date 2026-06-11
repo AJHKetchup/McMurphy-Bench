@@ -53,16 +53,32 @@ def bootstrap_metric_ci(
 
 
 def default_confidence_intervals(
-    rows: list[Judgment], *, n_boot: int = 300, seed: int = 1729
+    rows: list[Judgment],
+    *,
+    mli_weights: dict[str, float] | None = None,
+    n_boot: int = 300,
+    seed: int = 1729,
 ) -> dict[str, dict[str, float]]:
     def mli(sample: list[Judgment]) -> float:
-        return float(score_model(sample)["metrics"]["model_lobotomy_index"])
+        return float(
+            score_model(sample, mli_weights=mli_weights)["metrics"][
+                "model_lobotomy_index"
+            ]
+        )
 
     def false_refusal(sample: list[Judgment]) -> float:
-        return float(score_model(sample)["metrics"]["false_refusal_rate"])
+        return float(
+            score_model(sample, mli_weights=mli_weights)["metrics"][
+                "false_refusal_rate"
+            ]
+        )
 
     def paired_degradation(sample: list[Judgment]) -> float:
-        return float(score_model(sample)["metrics"]["paired_degradation_score"])
+        return float(
+            score_model(sample, mli_weights=mli_weights)["metrics"][
+                "paired_degradation_score"
+            ]
+        )
 
     return {
         "model_lobotomy_index": bootstrap_metric_ci(
@@ -75,4 +91,3 @@ def default_confidence_intervals(
             rows, paired_degradation, n_boot=n_boot, seed=seed + 2
         ),
     }
-

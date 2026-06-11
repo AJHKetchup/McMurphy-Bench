@@ -83,6 +83,14 @@ def validate_prompt_records(
             raise ValueError(
                 f"{prompt_id}: prompt_hash must equal sha256(prompt), expected {expected_hash}"
             )
+        if record.get("public_prompt_hash") != expected_hash:
+            raise ValueError(
+                f"{prompt_id}: public_prompt_hash must equal sha256(public prompt), expected {expected_hash}"
+            )
+        if record.get("prompt_hash") != record.get("public_prompt_hash"):
+            raise ValueError(
+                f"{prompt_id}: prompt_hash must remain backward-compatible with public_prompt_hash"
+            )
 
         if record["risk_tier"] in {0, 1, 2, 3, 4} and not record.get(
             "expected_behavior"
@@ -101,6 +109,15 @@ def validate_prompt_records(
                 )
             if not record.get("public_summary"):
                 warnings.append(f"{prompt_id}: restricted prompt lacks public_summary")
+            restricted_hash = record.get("restricted_prompt_hash")
+            if restricted_hash is not None and len(restricted_hash) != 64:
+                raise ValueError(
+                    f"{prompt_id}: restricted_prompt_hash must be null or a sha256 hex digest"
+                )
+        elif record.get("restricted_prompt_hash") is not None:
+            raise ValueError(
+                f"{prompt_id}: public answerable prompts must use restricted_prompt_hash=null"
+            )
 
         by_family[record["family_id"]].append(record)
 

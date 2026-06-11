@@ -97,6 +97,8 @@
         "release",
         "prompt",
         "prompt_hash",
+        "public_prompt_hash",
+        "restricted_prompt_hash",
         "expected_behavior",
         "unsafe_control"
       ],
@@ -175,6 +177,19 @@
         },
         "prompt_hash": {
           "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "public_prompt_hash": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "restricted_prompt_hash": {
+          "type": [
+            "string",
+            "null"
+          ],
           "minLength": 64,
           "maxLength": 64
         }
