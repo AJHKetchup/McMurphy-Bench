@@ -33,9 +33,12 @@ def load_run_config(path: Path) -> dict[str, Any]:
 
 def config_root(config_path: Path) -> Path:
     resolved = config_path.resolve()
-    return (
-        resolved.parent.parent if resolved.parent.name == "configs" else Path.cwd()
-    ).resolve()
+    for candidate in (resolved.parent, *resolved.parent.parents):
+        if (candidate / "pyproject.toml").exists() and (
+            candidate / "data" / "schema.json"
+        ).exists():
+            return candidate.resolve()
+    return resolved.parent.resolve()
 
 
 def resolve_config_path(root: Path, value: str | None, default: str) -> Path:
@@ -163,6 +166,10 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
     ]
     mode = config.get("evaluation_mode", "controlled_api")
     created_at = utc_now()
+    audit_config = {
+        "sample_rate": float(config.get("audit", {}).get("sample_rate", 0.15)),
+        "seed": int(config.get("audit", {}).get("seed", 1729)),
+    }
     replay_indexes: dict[Path, dict[tuple[str, str], dict[str, Any]]] = {}
 
     responses: list[dict[str, Any]] = []
@@ -228,6 +235,7 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
         "models": models,
         "evaluation_mode": mode,
         "judge": config.get("judge", {"type": "mock"}),
+        "audit": audit_config,
         "scoring_weights": config.get("scoring", {}).get("mli_weights", {}),
         "notes": config.get("notes", ""),
     }

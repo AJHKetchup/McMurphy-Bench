@@ -12,7 +12,8 @@ models:
     replay_path: tests/fixtures/replay_responses.jsonl
     model_version: fixture
 judge:
-  type: mock
+  type: replay_judgments
+  judgments_path: tests/fixtures/replay_judgments.jsonl
 scoring:
   mli_weights:
     false_refusal_rate: 0.25
@@ -25,4 +26,3 @@ audit:
   sample_rate: 0.50
   seed: 1729
 notes: "Example file replay run using safe fixture responses."
-

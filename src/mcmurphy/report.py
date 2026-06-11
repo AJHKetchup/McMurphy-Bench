@@ -33,6 +33,7 @@ def write_report(
             "prompt_set_sha256": manifest.get("prompt_set_sha256"),
             "evaluation_mode": manifest.get("evaluation_mode"),
             "judge": manifest.get("judge"),
+            "audit": manifest.get("audit"),
         }
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(json.dumps(report, indent=2), encoding="utf-8")

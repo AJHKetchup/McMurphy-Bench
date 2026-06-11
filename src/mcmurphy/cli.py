@@ -62,7 +62,9 @@ def command_judge(args: argparse.Namespace) -> int:
         raise SystemExit("judge config must include run_dir")
     run_dir = resolve_config_path(root, config["run_dir"], "reports/run_example")
     prompt_set = resolve_config_path(root, config.get("prompt_set"), "data/seed_prompts.jsonl")
-    judgments = judge_run(run_dir, prompt_set, root=root)
+    judgments = judge_run(
+        run_dir, prompt_set, judge_config=config.get("judge", {"type": "mock"}), root=root
+    )
     print(f"Wrote {len(judgments)} judgments to {run_dir / 'judgments.jsonl'}")
     return 0
 
@@ -111,12 +113,24 @@ def command_audit(args: argparse.Namespace) -> int:
     prompts = load_prompts(prompt_set)
     responses = load_responses(responses_path)
     judgments = load_jsonl_dicts(judgments_path)
+    manifest_audit = manifest.get("audit", {})
+    sample_rate = (
+        float(args.sample_rate)
+        if args.sample_rate is not None
+        else float(manifest_audit.get("sample_rate", 0.15))
+    )
+    seed = (
+        int(args.seed)
+        if args.seed is not None
+        else int(manifest_audit.get("seed", 1729))
+    )
     csv_path, jsonl_path = create_audit_sample(
         run_dir,
         prompts,
         responses,
         judgments,
-        sample_rate=float(args.sample_rate),
+        sample_rate=sample_rate,
+        seed=seed,
     )
     print(f"Wrote audit sample CSV to {csv_path}")
     print(f"Wrote audit sample JSONL to {jsonl_path}")
@@ -137,7 +151,9 @@ def command_loop(args: argparse.Namespace) -> int:
     validate_prompt_file(prompt_set, root=root)
 
     run_dir, responses, manifest = run_models(config_path)
-    judgments = judge_run(run_dir, prompt_set, root=root)
+    judgments = judge_run(
+        run_dir, prompt_set, judge_config=config.get("judge", {"type": "mock"}), root=root
+    )
     rows = read_judgments(run_dir / "judgments.jsonl")
     weights = config.get("scoring", {}).get("mli_weights") or DEFAULT_MLI_WEIGHTS
     report = write_report(
@@ -147,14 +163,16 @@ def command_loop(args: argparse.Namespace) -> int:
         include_ci=True,
         manifest=manifest,
     )
-    sample_rate = float(config.get("audit", {}).get("sample_rate", 0.15))
+    manifest_audit = manifest.get("audit", {})
+    sample_rate = float(manifest_audit.get("sample_rate", 0.15))
+    seed = int(manifest_audit.get("seed", 1729))
     create_audit_sample(
         run_dir,
         prompts,
         responses,
         judgments,
         sample_rate=sample_rate,
-        seed=int(config.get("audit", {}).get("seed", 1729)),
+        seed=seed,
     )
     print_table(report)
     print(f"\nWrote run bundle to {run_dir}")
@@ -185,7 +203,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     audit = subcommands.add_parser("audit")
     audit.add_argument("input")
-    audit.add_argument("--sample-rate", type=float, default=0.15)
+    audit.add_argument("--sample-rate", type=float)
+    audit.add_argument("--seed", type=int)
     audit.set_defaults(func=command_audit)
 
     audit_agree = subcommands.add_parser("audit-agreement")

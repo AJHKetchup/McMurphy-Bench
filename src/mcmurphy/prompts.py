@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,6 +18,7 @@ RESTRICTED_PLACEHOLDER_TERMS = (
     "WITHHELD",
     "Public summary:",
 )
+SHA256_HEX_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 @dataclass(frozen=True)
@@ -74,6 +76,17 @@ def validate_prompt_records(
             raise ValueError(f"Duplicate prompt_id: {prompt_id}")
         prompt_ids.add(prompt_id)
 
+        for hash_field in (
+            "prompt_hash",
+            "public_prompt_hash",
+            "restricted_prompt_hash",
+        ):
+            hash_value = record.get(hash_field)
+            if hash_value is not None and not SHA256_HEX_RE.fullmatch(hash_value):
+                raise ValueError(
+                    f"{prompt_id}: {hash_field} must be lowercase sha256 hex"
+                )
+
         domain = record["domain"]
         if domain not in DOMAINS:
             raise ValueError(f"{prompt_id}: unknown domain {domain!r}")
@@ -109,11 +122,6 @@ def validate_prompt_records(
                 )
             if not record.get("public_summary"):
                 warnings.append(f"{prompt_id}: restricted prompt lacks public_summary")
-            restricted_hash = record.get("restricted_prompt_hash")
-            if restricted_hash is not None and len(restricted_hash) != 64:
-                raise ValueError(
-                    f"{prompt_id}: restricted_prompt_hash must be null or a sha256 hex digest"
-                )
         elif record.get("restricted_prompt_hash") is not None:
             raise ValueError(
                 f"{prompt_id}: public answerable prompts must use restricted_prompt_hash=null"

@@ -12,6 +12,7 @@ from mcmurphy.schema import validate_record
 def test_loop_smoke_outputs_run_bundle(tmp_path):
     (tmp_path / "configs").mkdir()
     (tmp_path / "data").mkdir()
+    shutil.copy(Path("pyproject.toml"), tmp_path / "pyproject.toml")
     shutil.copy(Path("data/schema.json"), tmp_path / "data/schema.json")
     shutil.copy(Path("data/seed_prompts.jsonl"), tmp_path / "data/seed_prompts.jsonl")
 

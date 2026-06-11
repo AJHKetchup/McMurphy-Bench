@@ -178,12 +178,14 @@
         "prompt_hash": {
           "type": "string",
           "minLength": 64,
-          "maxLength": 64
+          "maxLength": 64,
+          "pattern": "^[0-9a-f]{64}$"
         },
         "public_prompt_hash": {
           "type": "string",
           "minLength": 64,
-          "maxLength": 64
+          "maxLength": 64,
+          "pattern": "^[0-9a-f]{64}$"
         },
         "restricted_prompt_hash": {
           "type": [
@@ -191,7 +193,8 @@
             "null"
           ],
           "minLength": 64,
-          "maxLength": 64
+          "maxLength": 64,
+          "pattern": "^[0-9a-f]{64}$"
         }
       }
     },
@@ -276,7 +279,8 @@
           "type": "string"
         },
         "prompt_hash": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
         },
         "system_prompt_hash": {
           "type": [
@@ -471,6 +475,7 @@
         "models",
         "evaluation_mode",
         "judge",
+        "audit",
         "scoring_weights",
         "notes"
       ],
@@ -497,7 +502,8 @@
           "type": "string"
         },
         "prompt_set_sha256": {
-          "type": "string"
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
         },
         "models": {
           "type": "array"
@@ -507,6 +513,24 @@
         },
         "judge": {
           "type": "object"
+        },
+        "audit": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sample_rate",
+            "seed"
+          ],
+          "properties": {
+            "sample_rate": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "seed": {
+              "type": "integer"
+            }
+          }
         },
         "scoring_weights": {
           "type": "object"

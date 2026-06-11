@@ -32,3 +32,11 @@ jobs:
       - name: Run benchmark loop
         run: mcmurphy loop configs/run.example.yaml
 
+      - name: Regenerate audit sample
+        run: mcmurphy audit reports/run_example --sample-rate 0.15
+
+      - name: Check audit agreement command
+        run: mcmurphy audit-agreement reports/run_example/audit_sample.csv
+
+      - name: Run replay benchmark loop
+        run: mcmurphy loop configs/replay.example.yaml
