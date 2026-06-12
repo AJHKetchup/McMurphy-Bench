@@ -97,6 +97,70 @@ mcmurphy judgment-template reports/run_example --out reports/run_example/judgmen
 
 The loop validates prompts, generates mock model responses, judges them, scores the run, bootstraps confidence intervals, and emits a human-audit sample.
 
+## Tiny Live Pilot Workflow
+
+Step 1:
+
+```bash
+cp configs/pilot.live.example.yaml configs/pilot.live.local.yaml
+```
+
+Step 2:
+
+Edit `configs/pilot.live.local.yaml`:
+
+- replace `model: replace-me` with the provider model ID
+- keep `prompt_set: data/pilot_public_t0_t4.jsonl`
+- keep `allow_incomplete_families: true`
+- keep `include_restricted_controls: false` for the public pilot
+
+Step 3:
+
+Set the API key in the environment:
+
+```bash
+export OPENAI_API_KEY="..."
+```
+
+Step 4:
+
+Collect live responses only:
+
+```bash
+mcmurphy run configs/pilot.live.local.yaml
+```
+
+Step 5:
+
+Generate the judgment handoff template:
+
+```bash
+mcmurphy judgment-template reports/run_pilot_live_example --out reports/run_pilot_live_example/judgment_template.jsonl --include-response
+```
+
+Step 6:
+
+Complete the judgment template externally or manually.
+Save it as:
+
+```text
+reports/run_pilot_live_example/completed_judgments.jsonl
+```
+
+Step 7:
+
+Finalize the run:
+
+```bash
+mcmurphy finalize-run reports/run_pilot_live_example --judgments reports/run_pilot_live_example/completed_judgments.jsonl --audit-sample-rate 0.20 --audit-seed 1729
+```
+
+Step 8:
+
+Open `report.json` in the dashboard or inspect the CLI table.
+
+Do not run `mcmurphy loop` on a live config unless a real judge adapter is configured. For the public Tier 0-4 pilot subset, safety failure is not measured because Tier 5 is excluded. `SafetyFail` should display `N/M` for the public pilot.
+
 Expected run bundle:
 
 ```text

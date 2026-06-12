@@ -103,6 +103,22 @@ def copy_replay_files(tmp_path: Path) -> None:
     )
 
 
+def run_pilot_loop(tmp_path: Path, *, run_id: str = "run_pilot_finalize") -> Path:
+    copy_pilot_files(tmp_path)
+    config = yaml.safe_load(Path("configs/pilot.mock.example.yaml").read_text())
+    config["run_id"] = run_id
+    config_path = tmp_path / "configs/pilot.mock.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    assert main(["loop", str(config_path)]) == 0
+    return tmp_path / f"reports/{run_id}"
+
+
+def write_completed_fixture(run_dir: Path, records: list[dict]) -> Path:
+    path = run_dir / "completed_judgments.jsonl"
+    write_jsonl(path, records)
+    return path
+
+
 def test_custom_weight_confidence_interval_midpoint_matches_report(tmp_path):
     rows = read_judgments(Path("data/sample_judgments.csv"))
     model_b_rows = [row for row in rows if row.model == "Model B"]
@@ -284,6 +300,205 @@ def test_command_loop_passes_incomplete_family_flag_for_pilot_subset(tmp_path):
     assert manifest["allow_incomplete_families"] is True
     assert report["run_manifest"]["allow_incomplete_families"] is True
     assert report["models"][0]["metrics"]["unsafe_fulfillment_measured"] is False
+
+
+def test_finalize_run_success_for_pilot_subset(tmp_path):
+    run_dir = run_pilot_loop(tmp_path, run_id="run_finalize_success")
+
+    assert (
+        main(
+            [
+                "finalize-run",
+                str(run_dir),
+                "--judgments",
+                str(run_dir / "judgments.jsonl"),
+                "--audit-sample-rate",
+                "0.20",
+                "--audit-seed",
+                "1729",
+            ]
+        )
+        == 0
+    )
+
+    report = json.loads((run_dir / "report.json").read_text(encoding="utf-8"))
+    assert (run_dir / "judgments.jsonl").exists()
+    assert (run_dir / "audit_sample.csv").exists()
+    assert (run_dir / "audit_sample.jsonl").exists()
+    assert report["judgment_coverage"]["complete"] is True
+    assert report["judgment_coverage"]["judged_response_count"] == 150
+    assert report["judgment_coverage"]["total_response_count"] == 150
+    assert all(
+        model["metrics"]["unsafe_fulfillment_measured"] is False
+        for model in report["models"]
+    )
+    assert report["run_manifest"]["allow_incomplete_families"] is True
+    assert report["run_manifest"]["run_prompt_count_by_tier"]["5"] == 0
+
+
+def test_finalize_run_rejects_template_judgments(tmp_path):
+    run_dir = run_pilot_loop(tmp_path, run_id="run_finalize_template")
+    template_path = run_dir / "judgment_template.jsonl"
+    assert (
+        main(
+            [
+                "judgment-template",
+                str(run_dir),
+                "--out",
+                str(template_path),
+                "--include-response",
+            ]
+        )
+        == 0
+    )
+
+    with pytest.raises(ValueError, match="template records are not completed judgments"):
+        main(["finalize-run", str(run_dir), "--judgments", str(template_path)])
+
+
+def test_finalize_run_rejects_missing_judgment_by_default(tmp_path):
+    run_dir = run_pilot_loop(tmp_path, run_id="run_finalize_missing")
+    judgments = read_jsonl(run_dir / "judgments.jsonl")
+    path = write_completed_fixture(run_dir, judgments[:-1])
+
+    with pytest.raises(ValueError, match="missing judgment"):
+        main(["finalize-run", str(run_dir), "--judgments", str(path)])
+
+
+def test_finalize_run_rejects_duplicate_judgment(tmp_path):
+    run_dir = run_pilot_loop(tmp_path, run_id="run_finalize_duplicate")
+    judgments = read_jsonl(run_dir / "judgments.jsonl")
+    path = write_completed_fixture(run_dir, [*judgments, dict(judgments[0])])
+
+    with pytest.raises(ValueError, match="duplicate judgment"):
+        main(["finalize-run", str(run_dir), "--judgments", str(path)])
+
+
+def test_finalize_run_rejects_extra_judgment(tmp_path):
+    run_dir = run_pilot_loop(tmp_path, run_id="run_finalize_extra")
+    judgments = read_jsonl(run_dir / "judgments.jsonl")
+    extra = dict(judgments[0])
+    extra["model"] = "missing_model"
+    path = write_completed_fixture(run_dir, [*judgments, extra])
+
+    with pytest.raises(ValueError, match="response that does not exist"):
+        main(["finalize-run", str(run_dir), "--judgments", str(path)])
+
+
+def test_finalize_run_rejects_response_hash_mismatch(tmp_path):
+    run_dir = run_pilot_loop(tmp_path, run_id="run_finalize_response_hash")
+    judgments = read_jsonl(run_dir / "judgments.jsonl")
+    judgments[0]["response_hash"] = "0" * 64
+    path = write_completed_fixture(run_dir, judgments)
+
+    with pytest.raises(ValueError, match="response_hash"):
+        main(["finalize-run", str(run_dir), "--judgments", str(path)])
+
+
+def test_finalize_run_rejects_prompt_hash_mismatch(tmp_path):
+    run_dir = run_pilot_loop(tmp_path, run_id="run_finalize_prompt_hash")
+    judgments = read_jsonl(run_dir / "judgments.jsonl")
+    judgments[0]["prompt_hash"] = "0" * 64
+    path = write_completed_fixture(run_dir, judgments)
+
+    with pytest.raises(ValueError, match="prompt_hash"):
+        main(["finalize-run", str(run_dir), "--judgments", str(path)])
+
+
+def test_finalize_run_fills_missing_inferable_provenance(tmp_path):
+    run_dir = run_pilot_loop(tmp_path, run_id="run_finalize_fill")
+    judgments = read_jsonl(run_dir / "judgments.jsonl")
+    stripped = dict(judgments[0])
+    for field in (
+        "run_id",
+        "family_id",
+        "domain",
+        "risk_tier",
+        "variant",
+        "prompt_hash",
+        "response_hash",
+        "answerable",
+        "is_harmful_control",
+    ):
+        stripped.pop(field)
+    judgments[0] = stripped
+    path = write_completed_fixture(run_dir, judgments)
+
+    assert main(["finalize-run", str(run_dir), "--judgments", str(path)]) == 0
+
+    written = read_jsonl(run_dir / "judgments.jsonl")
+    responses = {
+        (response["model"], response["prompt_id"]): response
+        for response in read_jsonl(run_dir / "responses.jsonl")
+    }
+    filled = next(
+        record
+        for record in written
+        if record["model"] == stripped["model"]
+        and record["prompt_id"] == stripped["prompt_id"]
+    )
+    response = responses[(filled["model"], filled["prompt_id"])]
+    for field in (
+        "run_id",
+        "family_id",
+        "domain",
+        "risk_tier",
+        "variant",
+        "prompt_hash",
+        "response_hash",
+    ):
+        assert filled[field] == response[field]
+    assert filled["answerable"] is True
+    assert filled["is_harmful_control"] is False
+
+
+def test_finalize_run_allows_partial_judgments_with_debug_flag(tmp_path):
+    run_dir = run_pilot_loop(tmp_path, run_id="run_finalize_partial")
+    judgments = read_jsonl(run_dir / "judgments.jsonl")
+    path = write_completed_fixture(run_dir, judgments[:-1])
+
+    assert (
+        main(
+            [
+                "finalize-run",
+                str(run_dir),
+                "--judgments",
+                str(path),
+                "--allow-partial-judgments",
+            ]
+        )
+        == 0
+    )
+
+    report = json.loads((run_dir / "report.json").read_text(encoding="utf-8"))
+    assert report["judgment_coverage"]["complete"] is False
+    assert report["judgment_coverage"]["judged_response_count"] == 149
+    assert report["judgment_coverage"]["total_response_count"] == 150
+    assert "Partial judgment coverage is not directly comparable" in report["ranking_note"]
+
+
+def test_report_run_rebuilds_report_and_optionally_audit(tmp_path):
+    run_dir = run_pilot_loop(tmp_path, run_id="run_report_run")
+    (run_dir / "report.json").unlink()
+
+    assert main(["report-run", str(run_dir)]) == 0
+
+    report = json.loads((run_dir / "report.json").read_text(encoding="utf-8"))
+    assert report["run_manifest"]["run_id"] == "run_report_run"
+    assert report["judgment_coverage"]["complete"] is True
+
+    judgments_path = run_dir / "judgments.jsonl"
+    saved_judgments = read_jsonl(judgments_path)
+    judgments_path.unlink()
+    with pytest.raises(FileNotFoundError, match="judgments.jsonl"):
+        main(["report-run", str(run_dir)])
+    write_jsonl(judgments_path, saved_judgments)
+
+    (run_dir / "audit_sample.csv").unlink()
+    (run_dir / "audit_sample.jsonl").unlink()
+    assert main(["report-run", str(run_dir), "--audit"]) == 0
+    assert (run_dir / "audit_sample.csv").exists()
+    assert (run_dir / "audit_sample.jsonl").exists()
 
 
 def test_completed_mock_judgments_have_completed_status(tmp_path):

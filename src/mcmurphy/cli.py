@@ -10,6 +10,7 @@ from typing import Any
 import yaml
 
 from .audit import audit_agreement, create_audit_sample
+from .finalize import finalize_run, report_run
 from .judge import judge_run, load_responses, write_judgment_template
 from .prompts import (
     load_prompts,
@@ -182,6 +183,51 @@ def command_audit_agreement(args: argparse.Namespace) -> int:
     return 0
 
 
+def harmful_controls_measured(report: dict[str, Any]) -> bool:
+    return any(
+        bool(model["metrics"].get("unsafe_fulfillment_measured"))
+        for model in report.get("models", [])
+    )
+
+
+def command_finalize_run(args: argparse.Namespace) -> int:
+    result = finalize_run(
+        Path(args.run_dir),
+        Path(args.judgments),
+        float(args.audit_sample_rate),
+        int(args.audit_seed),
+        allow_partial=bool(args.allow_partial_judgments),
+    )
+    report = result["report"]
+    coverage = result["coverage"]
+    print_table(report)
+    print()
+    print(f"run_id: {result['run_id']}")
+    print(f"judged responses: {coverage['judged_response_count']}")
+    print(f"total responses: {coverage['total_response_count']}")
+    print(f"judgment coverage complete: {str(coverage['complete']).lower()}")
+    print(f"report: {result['report_path']}")
+    print(f"audit CSV: {result['audit_csv_path']}")
+    print(f"audit JSONL: {result['audit_jsonl_path']}")
+    print(f"harmful controls measured: {str(harmful_controls_measured(report)).lower()}")
+    return 0
+
+
+def command_report_run(args: argparse.Namespace) -> int:
+    result = report_run(
+        Path(args.run_dir),
+        audit=bool(args.audit),
+        audit_sample_rate=float(args.audit_sample_rate),
+        audit_seed=int(args.audit_seed),
+    )
+    print_table(result["report"])
+    print(f"\nWrote report to {result['report_path']}")
+    if args.audit:
+        print(f"Wrote audit sample CSV to {result['audit_csv_path']}")
+        print(f"Wrote audit sample JSONL to {result['audit_jsonl_path']}")
+    return 0
+
+
 def command_judgment_template(args: argparse.Namespace) -> int:
     run_dir = Path(args.run_dir).resolve()
     manifest_path = run_dir / "manifest.json"
@@ -284,6 +330,21 @@ def build_parser() -> argparse.ArgumentParser:
     audit_agree = subcommands.add_parser("audit-agreement")
     audit_agree.add_argument("completed_csv")
     audit_agree.set_defaults(func=command_audit_agreement)
+
+    finalize_parser = subcommands.add_parser("finalize-run")
+    finalize_parser.add_argument("run_dir")
+    finalize_parser.add_argument("--judgments", required=True)
+    finalize_parser.add_argument("--audit-sample-rate", type=float, default=0.20)
+    finalize_parser.add_argument("--audit-seed", type=int, default=1729)
+    finalize_parser.add_argument("--allow-partial-judgments", action="store_true")
+    finalize_parser.set_defaults(func=command_finalize_run)
+
+    report_parser = subcommands.add_parser("report-run")
+    report_parser.add_argument("run_dir")
+    report_parser.add_argument("--audit", action="store_true")
+    report_parser.add_argument("--audit-sample-rate", type=float, default=0.20)
+    report_parser.add_argument("--audit-seed", type=int, default=1729)
+    report_parser.set_defaults(func=command_report_run)
 
     judgment_template = subcommands.add_parser("judgment-template")
     judgment_template.add_argument("run_dir")

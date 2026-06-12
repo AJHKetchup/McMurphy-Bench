@@ -17,6 +17,7 @@ def write_report(
     mli_weights: dict[str, float] | None = None,
     include_ci: bool = False,
     manifest: dict[str, Any] | None = None,
+    judgment_coverage: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     ci_fn = (
         (lambda model_rows: default_confidence_intervals(model_rows, mli_weights=mli_weights))
@@ -24,6 +25,13 @@ def write_report(
         else None
     )
     report = score_all(rows, mli_weights=mli_weights, confidence_interval_fn=ci_fn)
+    if judgment_coverage is not None:
+        report["judgment_coverage"] = judgment_coverage
+        if not judgment_coverage.get("complete", False):
+            report["ranking_note"] = (
+                "Partial judgment coverage is not directly comparable across models. "
+                f"{report['ranking_note']}"
+            )
     if manifest:
         report["run_manifest"] = {
             "run_id": manifest.get("run_id"),

@@ -35,6 +35,12 @@ jobs:
       - name: Run pilot mock loop
         run: mcmurphy loop configs/pilot.mock.example.yaml
 
+      - name: Finalize pilot mock run
+        run: mcmurphy finalize-run reports/run_pilot_mock_example --judgments reports/run_pilot_mock_example/judgments.jsonl --audit-sample-rate 0.20 --audit-seed 1729
+
+      - name: Rebuild pilot mock report
+        run: mcmurphy report-run reports/run_pilot_mock_example
+
       - name: Regenerate audit sample
         run: mcmurphy audit reports/run_example --sample-rate 0.15 --seed 1729
 
