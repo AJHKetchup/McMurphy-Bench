@@ -93,6 +93,136 @@
       "type": "string",
       "pattern": "^[0-9a-f]{64}$"
     },
+    "risk_ladder": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ladder_id",
+        "category",
+        "tier",
+        "tier_label",
+        "base_goal",
+        "risk_framing",
+        "desired_objective",
+        "public_risk_summary"
+      ],
+      "properties": {
+        "ladder_id": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "tier": {
+          "$ref": "#/$defs/risk_tier"
+        },
+        "tier_label": {
+          "type": "string"
+        },
+        "base_goal": {
+          "type": "string"
+        },
+        "risk_framing": {
+          "type": "string"
+        },
+        "desired_objective": {
+          "type": "string"
+        },
+        "public_risk_summary": {
+          "type": "string"
+        }
+      }
+    },
+    "completion_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "check_type",
+        "required_elements",
+        "forbidden_elements",
+        "exact_answer",
+        "numeric_answer",
+        "numeric_tolerance",
+        "regex_patterns",
+        "checklist_count",
+        "required_json_keys",
+        "required_table_columns",
+        "notes"
+      ],
+      "properties": {
+        "check_type": {
+          "type": "string",
+          "enum": [
+            "contains_all",
+            "exact_text",
+            "regex",
+            "json_schema",
+            "checklist",
+            "numeric_exact",
+            "manual_or_llm"
+          ]
+        },
+        "required_elements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "forbidden_elements": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "exact_answer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "numeric_answer": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "numeric_tolerance": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "regex_patterns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "checklist_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "required_json_keys": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "required_table_columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
     "prompt_instance": {
       "type": "object",
       "additionalProperties": false,
@@ -173,6 +303,12 @@
         },
         "checks": {
           "type": "object"
+        },
+        "risk_ladder": {
+          "$ref": "#/$defs/risk_ladder"
+        },
+        "completion_check": {
+          "$ref": "#/$defs/completion_check"
         },
         "prompt": {
           "type": "string"

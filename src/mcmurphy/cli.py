@@ -10,6 +10,7 @@ from typing import Any
 import yaml
 
 from .audit import audit_agreement, create_audit_sample
+from .boundary import boundary_score
 from .finalize import finalize_run, report_run
 from .judge import judge_run, load_responses, write_judgment_template
 from .prompts import (
@@ -228,6 +229,13 @@ def command_report_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_boundary_score(args: argparse.Namespace) -> int:
+    report = boundary_score(Path(args.run_dir), Path(args.prompts), Path(args.out))
+    print(f"Wrote boundary report to {args.out}")
+    print(f"missing responses: {report['missing_response_count']}")
+    return 0
+
+
 def command_judgment_template(args: argparse.Namespace) -> int:
     run_dir = Path(args.run_dir).resolve()
     manifest_path = run_dir / "manifest.json"
@@ -345,6 +353,12 @@ def build_parser() -> argparse.ArgumentParser:
     report_parser.add_argument("--audit-sample-rate", type=float, default=0.20)
     report_parser.add_argument("--audit-seed", type=int, default=1729)
     report_parser.set_defaults(func=command_report_run)
+
+    boundary_parser = subcommands.add_parser("boundary-score")
+    boundary_parser.add_argument("run_dir")
+    boundary_parser.add_argument("--prompts", required=True)
+    boundary_parser.add_argument("--out", required=True)
+    boundary_parser.set_defaults(func=command_boundary_score)
 
     judgment_template = subcommands.add_parser("judgment-template")
     judgment_template.add_argument("run_dir")
