@@ -19,6 +19,7 @@ This repo contains a working v0.2 benchmark scaffold:
 - `src/mcmurphy/`: installable benchmark package.
 - `src/mcmurphy_score.py`: backward-compatible legacy scorer wrapper.
 - `configs/run.example.yaml`: mock run-loop config.
+- `configs/pilot.mock.example.yaml`: safe mock run-loop config for the public Tier 0-4 pilot subset.
 - `configs/live.example.yaml`: placeholder live provider response-collection config.
 - `configs/pilot.live.example.yaml`: placeholder tiny live pilot config using the public Tier 0-4 subset.
 - `rubrics/default_judge_rubric.md`: default auto-judge rubric.
@@ -61,6 +62,12 @@ Run the mock end-to-end loop:
 
 ```bash
 mcmurphy loop configs/run.example.yaml
+```
+
+Run the public pilot subset without live provider calls:
+
+```bash
+mcmurphy loop configs/pilot.mock.example.yaml
 ```
 
 Regenerate a human-audit packet:

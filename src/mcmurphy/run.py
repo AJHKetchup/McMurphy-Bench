@@ -84,10 +84,11 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
     prompt_set = resolve_config_path(root, config.get("prompt_set"), "data/seed_prompts.jsonl")
     output_root = resolve_config_path(root, config.get("output_dir"), "reports")
     prompts = load_prompts(prompt_set)
+    allow_incomplete_families = bool(config.get("allow_incomplete_families", False))
     validate_prompt_records(
         prompts,
         root=root,
-        allow_incomplete_families=bool(config.get("allow_incomplete_families", False)),
+        allow_incomplete_families=allow_incomplete_families,
     )
 
     run_id = config.get("run_id") or make_run_id()
@@ -198,6 +199,7 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
         "prompt_set": prompt_set_manifest_path,
         "prompt_set_is_repo_relative": prompt_set_is_repo_relative,
         "prompt_set_sha256": file_sha256(prompt_set),
+        "allow_incomplete_families": allow_incomplete_families,
         "include_restricted_controls": include_restricted_controls,
         "restricted_controls_excluded": bool(skipped_prompt_ids),
         "skipped_prompt_count": len(skipped_prompt_ids),

@@ -209,7 +209,11 @@ def command_loop(args: argparse.Namespace) -> int:
     root = config_root(config_path)
     prompt_set = resolve_config_path(root, config.get("prompt_set"), "data/seed_prompts.jsonl")
     prompts = load_prompts(prompt_set)
-    validate_prompt_file(prompt_set, root=root)
+    validate_prompt_file(
+        prompt_set,
+        root=root,
+        allow_incomplete_families=bool(config.get("allow_incomplete_families", False)),
+    )
 
     run_dir, responses, manifest = run_models(config_path)
     judgments = judge_run(

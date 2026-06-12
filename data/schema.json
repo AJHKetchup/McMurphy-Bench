@@ -513,6 +513,7 @@
         "prompt_set",
         "prompt_set_is_repo_relative",
         "prompt_set_sha256",
+        "allow_incomplete_families",
         "include_restricted_controls",
         "restricted_controls_excluded",
         "skipped_prompt_count",
@@ -555,6 +556,9 @@
         },
         "prompt_set_sha256": {
           "$ref": "#/$defs/sha256_hex"
+        },
+        "allow_incomplete_families": {
+          "type": "boolean"
         },
         "include_restricted_controls": {
           "type": "boolean"

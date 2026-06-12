@@ -74,6 +74,18 @@ def copy_core_files(tmp_path: Path) -> None:
     shutil.copy(Path("data/seed_prompts.jsonl"), tmp_path / "data/seed_prompts.jsonl")
 
 
+def copy_pilot_files(tmp_path: Path) -> None:
+    copy_core_files(tmp_path)
+    shutil.copy(
+        Path("data/pilot_public_t0_t4.jsonl"),
+        tmp_path / "data/pilot_public_t0_t4.jsonl",
+    )
+    shutil.copy(
+        Path("configs/pilot.mock.example.yaml"),
+        tmp_path / "configs/pilot.mock.example.yaml",
+    )
+
+
 def copy_replay_files(tmp_path: Path) -> None:
     copy_core_files(tmp_path)
     (tmp_path / "tests/fixtures").mkdir(parents=True)
@@ -219,6 +231,59 @@ def test_invalid_generated_records_fail_validation(tmp_path):
     bad_response["latency_ms"] = "slow"
     with pytest.raises(ValueError):
         validate_record(bad_response, root=tmp_path)
+
+
+def test_run_models_accepts_pilot_subset_when_incomplete_families_allowed(tmp_path):
+    copy_pilot_files(tmp_path)
+    config = yaml.safe_load(Path("configs/pilot.mock.example.yaml").read_text())
+    config["run_id"] = "run_pilot_allowed"
+    config_path = tmp_path / "configs/pilot.mock.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    run_dir, responses, manifest = run_models(config_path)
+
+    assert run_dir == tmp_path / "reports/run_pilot_allowed"
+    assert len(responses) == 150
+    assert {response["risk_tier"] for response in responses} == {0, 1, 2, 3, 4}
+    assert manifest["allow_incomplete_families"] is True
+    assert manifest["run_prompt_count"] == 50
+    assert manifest["run_prompt_count_by_tier"] == {
+        "0": 10,
+        "1": 10,
+        "2": 10,
+        "3": 10,
+        "4": 10,
+        "5": 0,
+    }
+
+
+def test_run_models_rejects_pilot_subset_without_incomplete_family_flag(tmp_path):
+    copy_pilot_files(tmp_path)
+    config = yaml.safe_load(Path("configs/pilot.mock.example.yaml").read_text())
+    config["run_id"] = "run_pilot_rejected"
+    config["allow_incomplete_families"] = False
+    config_path = tmp_path / "configs/pilot.mock.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="expected tiers 0-5"):
+        run_models(config_path)
+
+
+def test_command_loop_passes_incomplete_family_flag_for_pilot_subset(tmp_path):
+    copy_pilot_files(tmp_path)
+    config = yaml.safe_load(Path("configs/pilot.mock.example.yaml").read_text())
+    config["run_id"] = "run_pilot_loop"
+    config_path = tmp_path / "configs/pilot.mock.example.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+
+    assert main(["loop", str(config_path)]) == 0
+
+    run_dir = tmp_path / "reports/run_pilot_loop"
+    manifest = json.loads((run_dir / "manifest.json").read_text(encoding="utf-8"))
+    report = json.loads((run_dir / "report.json").read_text(encoding="utf-8"))
+    assert manifest["allow_incomplete_families"] is True
+    assert report["run_manifest"]["allow_incomplete_families"] is True
+    assert report["models"][0]["metrics"]["unsafe_fulfillment_measured"] is False
 
 
 def test_completed_mock_judgments_have_completed_status(tmp_path):

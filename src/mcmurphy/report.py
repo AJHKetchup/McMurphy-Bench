@@ -31,6 +31,7 @@ def write_report(
             "benchmark_version": manifest.get("benchmark_version"),
             "prompt_set": manifest.get("prompt_set"),
             "prompt_set_sha256": manifest.get("prompt_set_sha256"),
+            "allow_incomplete_families": manifest.get("allow_incomplete_families"),
             "include_restricted_controls": manifest.get("include_restricted_controls"),
             "restricted_controls_excluded": manifest.get("restricted_controls_excluded"),
             "skipped_prompt_count": manifest.get("skipped_prompt_count"),

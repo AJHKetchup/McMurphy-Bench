@@ -32,6 +32,9 @@ jobs:
       - name: Run benchmark loop
         run: mcmurphy loop configs/run.example.yaml
 
+      - name: Run pilot mock loop
+        run: mcmurphy loop configs/pilot.mock.example.yaml
+
       - name: Regenerate audit sample
         run: mcmurphy audit reports/run_example --sample-rate 0.15 --seed 1729
 
