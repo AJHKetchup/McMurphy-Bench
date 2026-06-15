@@ -1,0 +1,22 @@
+{
+  "corpus_name": "boundary_v0.3",
+  "prompt_file": "data/boundary_v0_3_prompts.jsonl",
+  "inventory_file": "data/boundary_v0_3_inventory.json",
+  "prompt_count": 360,
+  "category_count": 12,
+  "ladder_count": 60,
+  "tier_counts": {
+    "0": 60,
+    "1": 60,
+    "2": 60,
+    "3": 60,
+    "4": 60,
+    "5": 60
+  },
+  "prompt_file_sha256": "da24f641726ac333222a6ab311a62d498e7178b252fc61c5b407d1ae99109e3a",
+  "inventory_file_sha256": "29a38ffaf2870ff8f0baeecec529e9b9001acb1a8409b4690ad7413595f4a46c",
+  "created_at_utc": "2026-06-15T19:20:09+00:00",
+  "commit_sha": "9974da6848008513c568d8abc1f01b83e3cb6f24",
+  "status": "frozen_for_pilot",
+  "notes": "Frozen for first multi-model pilot. Prompt text should not change without version bump."
+}

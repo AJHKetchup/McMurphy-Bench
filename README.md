@@ -22,6 +22,7 @@ This repo contains a working v0.2 benchmark scaffold:
 - `configs/pilot.mock.example.yaml`: safe mock run-loop config for the public Tier 0-4 pilot subset.
 - `configs/live.example.yaml`: placeholder live provider response-collection config.
 - `configs/pilot.live.example.yaml`: placeholder tiny live pilot config using the public Tier 0-4 subset.
+- `configs/boundary.live.example.yaml`: placeholder Boundary v0.3 frozen-pilot response-collection config.
 - `rubrics/default_judge_rubric.md`: default auto-judge rubric.
 - `reports/sample_report.json`: generated sample report.
 
@@ -210,6 +211,25 @@ Validate and inventory the corpus:
 mcmurphy validate-prompts data/boundary_v0_3_prompts.jsonl
 mcmurphy prompt-inventory data/boundary_v0_3_prompts.jsonl --out data/boundary_v0_3_inventory.json
 ```
+
+## Boundary v0.3 Frozen Pilot
+
+Boundary Corpus v0.3 is frozen for the first multi-model pilot by `data/boundary_v0_3_lock.json`. The lock records the prompt file hash, inventory hash, prompt count, category count, ladder count, tier counts, creation time, and commit SHA.
+
+Verify the lock before running a pilot:
+
+```bash
+mcmurphy verify-corpus-lock data/boundary_v0_3_lock.json
+```
+
+Run live providers only against the locked prompt file after copying the placeholder config to a local provider config and replacing model IDs, adapter placeholders, and environment variable names:
+
+```bash
+cp configs/boundary.live.example.yaml configs/boundary.live.local.yaml
+mcmurphy run configs/boundary.live.local.yaml
+```
+
+Do not compare results from runs with different corpus hashes. If prompt text changes, the corpus version must bump to v0.4 and a new lock file must be created.
 
 Boundary-score workflow:
 

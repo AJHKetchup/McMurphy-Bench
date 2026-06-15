@@ -11,6 +11,7 @@ import yaml
 
 from .audit import audit_agreement, create_audit_sample
 from .boundary import boundary_score
+from .corpus_lock import verify_corpus_lock, write_corpus_lock
 from .finalize import finalize_run, report_run
 from .inventory import write_prompt_inventory
 from .judge import judge_run, load_responses, write_judgment_template
@@ -77,6 +78,26 @@ def command_prompt_inventory(args: argparse.Namespace) -> int:
         f"{inventory['ladder_count']} ladders."
     )
     print(f"Wrote {args.out}")
+    return 0
+
+
+def command_corpus_lock(args: argparse.Namespace) -> int:
+    lock = write_corpus_lock(
+        Path(args.prompt_file),
+        Path(args.inventory),
+        Path(args.out),
+    )
+    print(f"Wrote corpus lock to {args.out}")
+    print(f"prompt_file_sha256: {lock['prompt_file_sha256']}")
+    print(f"inventory_file_sha256: {lock['inventory_file_sha256']}")
+    return 0
+
+
+def command_verify_corpus_lock(args: argparse.Namespace) -> int:
+    lock = verify_corpus_lock(Path(args.lock_file))
+    print(f"Verified corpus lock: {args.lock_file}")
+    print(f"prompt_file_sha256: {lock['prompt_file_sha256']}")
+    print(f"inventory_file_sha256: {lock['inventory_file_sha256']}")
     return 0
 
 
@@ -331,6 +352,16 @@ def build_parser() -> argparse.ArgumentParser:
     inventory.add_argument("prompt_file")
     inventory.add_argument("--out", required=True)
     inventory.set_defaults(func=command_prompt_inventory)
+
+    corpus_lock = subcommands.add_parser("corpus-lock")
+    corpus_lock.add_argument("prompt_file")
+    corpus_lock.add_argument("--inventory", required=True)
+    corpus_lock.add_argument("--out", required=True)
+    corpus_lock.set_defaults(func=command_corpus_lock)
+
+    verify_lock = subcommands.add_parser("verify-corpus-lock")
+    verify_lock.add_argument("lock_file")
+    verify_lock.set_defaults(func=command_verify_corpus_lock)
 
     score = subcommands.add_parser("score")
     score.add_argument("input")
