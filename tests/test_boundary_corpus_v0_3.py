@@ -5,6 +5,7 @@ from pathlib import Path
 from mcmurphy.inventory import (
     EXTRA_TIER4_FORBIDDEN_PHRASES,
     EXTRA_TIER5_OPERATIONAL_PHRASES,
+    TEMPLATE_PROMPT_PHRASES,
     build_prompt_inventory,
 )
 from mcmurphy.prompts import (
@@ -35,6 +36,15 @@ CATEGORY_FILES = {
     "legal_process_evasion": Path("data/boundary_v0_3_legal_process_evasion.jsonl"),
 }
 EXPECTED_TIERS = {0, 1, 2, 3, 4, 5}
+TARGET_HARDENED_CATEGORIES = {
+    "tax_finance",
+    "cybersecurity",
+    "biology",
+    "chemistry",
+    "weapons",
+    "medicine_health",
+    "ai_research_ml",
+}
 
 
 def category(record: dict) -> str:
@@ -148,8 +158,8 @@ def test_boundary_v0_3_inventory_is_internally_consistent():
     assert inventory["tier4_forbidden_phrase_flags"] == []
     assert inventory["duplicate_prompt_ids"] == []
     assert inventory["duplicate_prompt_hashes"] == {}
-    assert inventory["likely_template_prompt_count"] < 180
-    assert inventory["weak_tier4_count"] == 35
+    assert inventory["likely_template_prompt_count"] <= 30
+    assert inventory["weak_tier4_count"] == 0
     assert inventory["missing_concrete_facts_count"] == 0
     assert inventory["weak_completion_check_count"] == 0
 
@@ -185,44 +195,30 @@ def test_prompt_inventory_flags_synthetic_template_prompt():
     assert inventory["weak_completion_check_ids"] == ["synthetic_bad_template_t4"]
 
 
-def test_hardened_categories_do_not_use_template_artifact_phrase():
-    hardened_categories = {
-        "politics_elections",
-        "regulated_goods_drugs",
-        "legal_process_evasion",
-        "fraud_social_engineering",
-        "privacy_surveillance",
-    }
+def test_target_hardened_categories_do_not_use_generic_template_phrases():
     records = [
         record
         for record in load_prompts(CORPUS_PATH)
-        if category(record) in hardened_categories
+        if category(record) in TARGET_HARDENED_CATEGORIES
+        and int(record["risk_tier"]) < 5
     ]
 
     assert records
     for record in records:
-        assert "artifact for" not in record["prompt"].casefold()
+        prompt = record["prompt"].casefold()
+        assert "artifact for" not in prompt
+        for phrase in TEMPLATE_PROMPT_PHRASES:
+            assert phrase not in prompt
 
 
-def test_review_status_tracks_hardened_and_review_categories():
+def test_review_status_tracks_all_categories_as_hardened_or_reviewed():
     review_status = json.loads(
         Path("data/boundary_v0_3_review_status.json").read_text(encoding="utf-8")
     )
 
     assert set(review_status) == set(CATEGORY_FILES)
-    for category_name in (
-        "politics_elections",
-        "regulated_goods_drugs",
-        "legal_process_evasion",
-        "fraud_social_engineering",
-        "privacy_surveillance",
-    ):
-        assert review_status[category_name]["status"] == "hardened"
-    for category_name in (
-        "biology",
-        "chemistry",
-        "weapons",
-        "medicine_health",
-        "ai_research_ml",
-    ):
-        assert review_status[category_name]["status"] == "needs_review"
+    allowed_statuses = {"hardened", "mostly_hardened", "reviewed"}
+    for category_name, record in review_status.items():
+        assert record["status"] in allowed_statuses
+        assert record["weak_prompt_ids"] == []
+        assert record["reviewer"] is None
