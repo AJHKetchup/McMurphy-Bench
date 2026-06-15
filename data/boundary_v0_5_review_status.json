@@ -1,0 +1,86 @@
+{
+  "ai_research_ml": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Boundary v0.5 seven-tier draft generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect ladder realism, Tier 4 quality, structured Tier 5 quality, and Tier 6 terminal-control directness."
+  },
+  "biology": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Boundary v0.5 seven-tier draft generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect ladder realism, Tier 4 quality, structured Tier 5 quality, and Tier 6 terminal-control directness."
+  },
+  "chemistry": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Boundary v0.5 seven-tier draft generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect ladder realism, Tier 4 quality, structured Tier 5 quality, and Tier 6 terminal-control directness."
+  },
+  "cybersecurity": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Boundary v0.5 seven-tier draft generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect ladder realism, Tier 4 quality, structured Tier 5 quality, and Tier 6 terminal-control directness."
+  },
+  "fraud_social_engineering": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Boundary v0.5 seven-tier draft generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect ladder realism, Tier 4 quality, structured Tier 5 quality, and Tier 6 terminal-control directness."
+  },
+  "legal_process_evasion": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Boundary v0.5 seven-tier draft generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect ladder realism, Tier 4 quality, structured Tier 5 quality, and Tier 6 terminal-control directness."
+  },
+  "medicine_health": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Boundary v0.5 seven-tier draft generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect ladder realism, Tier 4 quality, structured Tier 5 quality, and Tier 6 terminal-control directness."
+  },
+  "politics_elections": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Boundary v0.5 seven-tier draft generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect ladder realism, Tier 4 quality, structured Tier 5 quality, and Tier 6 terminal-control directness."
+  },
+  "privacy_surveillance": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Boundary v0.5 seven-tier draft generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect ladder realism, Tier 4 quality, structured Tier 5 quality, and Tier 6 terminal-control directness."
+  },
+  "regulated_goods_drugs": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Boundary v0.5 seven-tier draft generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect ladder realism, Tier 4 quality, structured Tier 5 quality, and Tier 6 terminal-control directness."
+  },
+  "tax_finance": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Boundary v0.5 seven-tier draft generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect ladder realism, Tier 4 quality, structured Tier 5 quality, and Tier 6 terminal-control directness."
+  },
+  "weapons": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Boundary v0.5 seven-tier draft generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect ladder realism, Tier 4 quality, structured Tier 5 quality, and Tier 6 terminal-control directness."
+  }
+}

@@ -1,0 +1,829 @@
+{
+  "total_prompt_count": 420,
+  "category_count": 12,
+  "ladder_count": 60,
+  "prompts_by_category": {
+    "ai_research_ml": 35,
+    "biology": 35,
+    "chemistry": 35,
+    "cybersecurity": 35,
+    "fraud_social_engineering": 35,
+    "legal_process_evasion": 35,
+    "medicine_health": 35,
+    "politics_elections": 35,
+    "privacy_surveillance": 35,
+    "regulated_goods_drugs": 35,
+    "tax_finance": 35,
+    "weapons": 35
+  },
+  "ladders_by_category": {
+    "ai_research_ml": [
+      "ai_research_ml_evals_and_red_team_boundary",
+      "ai_research_ml_inference_optimization_boundary",
+      "ai_research_ml_model_extraction_boundary",
+      "ai_research_ml_model_training_education_to_frontier_capability_boundary",
+      "ai_research_ml_synthetic_data_boundary"
+    ],
+    "biology": [
+      "biology_biology_education_to_harmful_optimization",
+      "biology_biosafety_level_boundary",
+      "biology_environmental_release_risk_boundary",
+      "biology_genetic_engineering_review_boundary",
+      "biology_microbial_growth_safety_boundary"
+    ],
+    "chemistry": [
+      "chemistry_corrosive_material_handling_boundary",
+      "chemistry_energetic_or_toxic_material_boundary",
+      "chemistry_household_chemical_safety_boundary",
+      "chemistry_school_lab_hazard_boundary",
+      "chemistry_synthesis_risk_review_boundary"
+    ],
+    "cybersecurity": [
+      "cybersecurity_credential_security_boundary",
+      "cybersecurity_malware_analysis_boundary",
+      "cybersecurity_phishing_defense_to_phishing_abuse",
+      "cybersecurity_production_red_team_boundary",
+      "cybersecurity_vulnerability_testing_boundary"
+    ],
+    "fraud_social_engineering": [
+      "fraud_social_engineering_customer_support_script_boundary",
+      "fraud_social_engineering_fundraising_or_sales_pressure_boundary",
+      "fraud_social_engineering_identity_verification_boundary",
+      "fraud_social_engineering_refund_policy_boundary",
+      "fraud_social_engineering_scam_awareness_to_impersonation_boundary"
+    ],
+    "legal_process_evasion": [
+      "legal_process_evasion_court_deadline_boundary",
+      "legal_process_evasion_law_enforcement_interaction_boundary",
+      "legal_process_evasion_legal_rights_info_to_evasion_boundary",
+      "legal_process_evasion_records_retention_boundary",
+      "legal_process_evasion_subpoena_response_boundary"
+    ],
+    "medicine_health": [
+      "medicine_health_clinical_trial_info_to_dangerous_medical_action",
+      "medicine_health_diagnosis_information_boundary",
+      "medicine_health_emergency_symptom_triage_boundary",
+      "medicine_health_medication_info_to_misuse_boundary",
+      "medicine_health_supplement_safety_boundary"
+    ],
+    "politics_elections": [
+      "politics_elections_campaign_message_boundary",
+      "politics_elections_civic_information_to_deceptive_persuasion_boundary",
+      "politics_elections_misinformation_detection_boundary",
+      "politics_elections_polling_analysis_boundary",
+      "politics_elections_voter_information_boundary"
+    ],
+    "privacy_surveillance": [
+      "privacy_surveillance_device_privacy_to_spyware_boundary",
+      "privacy_surveillance_location_tracking_boundary",
+      "privacy_surveillance_personal_data_hygiene_to_doxxing_boundary",
+      "privacy_surveillance_public_records_research_boundary",
+      "privacy_surveillance_workplace_monitoring_boundary"
+    ],
+    "regulated_goods_drugs": [
+      "regulated_goods_drugs_alcohol_tobacco_age_restriction_boundary",
+      "regulated_goods_drugs_cannabis_law_information_boundary",
+      "regulated_goods_drugs_controlled_substance_information_boundary",
+      "regulated_goods_drugs_gray_market_product_boundary",
+      "regulated_goods_drugs_prescription_access_boundary"
+    ],
+    "tax_finance": [
+      "tax_business_expense_deduction_boundary",
+      "tax_charitable_deduction_valuation_boundary",
+      "tax_entity_compensation_boundary",
+      "tax_federal_income_tax_reduction",
+      "tax_residency_income_timing_boundary"
+    ],
+    "weapons": [
+      "weapons_firearm_accessory_boundary",
+      "weapons_firearm_purchase_compliance_boundary",
+      "weapons_pepper_spray_to_illegal_firearm_boundary",
+      "weapons_self_defense_setup_boundary",
+      "weapons_weapon_storage_transport_boundary"
+    ]
+  },
+  "tiers_present_by_ladder": {
+    "ai_research_ml_evals_and_red_team_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "ai_research_ml_inference_optimization_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "ai_research_ml_model_extraction_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "ai_research_ml_model_training_education_to_frontier_capability_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "ai_research_ml_synthetic_data_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "biology_biology_education_to_harmful_optimization": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "biology_biosafety_level_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "biology_environmental_release_risk_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "biology_genetic_engineering_review_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "biology_microbial_growth_safety_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "chemistry_corrosive_material_handling_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "chemistry_energetic_or_toxic_material_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "chemistry_household_chemical_safety_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "chemistry_school_lab_hazard_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "chemistry_synthesis_risk_review_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "cybersecurity_credential_security_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "cybersecurity_malware_analysis_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "cybersecurity_phishing_defense_to_phishing_abuse": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "cybersecurity_production_red_team_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "cybersecurity_vulnerability_testing_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "fraud_social_engineering_customer_support_script_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "fraud_social_engineering_fundraising_or_sales_pressure_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "fraud_social_engineering_identity_verification_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "fraud_social_engineering_refund_policy_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "fraud_social_engineering_scam_awareness_to_impersonation_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "legal_process_evasion_court_deadline_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "legal_process_evasion_law_enforcement_interaction_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "legal_process_evasion_legal_rights_info_to_evasion_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "legal_process_evasion_records_retention_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "legal_process_evasion_subpoena_response_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "medicine_health_clinical_trial_info_to_dangerous_medical_action": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "medicine_health_diagnosis_information_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "medicine_health_emergency_symptom_triage_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "medicine_health_medication_info_to_misuse_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "medicine_health_supplement_safety_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "politics_elections_campaign_message_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "politics_elections_civic_information_to_deceptive_persuasion_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "politics_elections_misinformation_detection_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "politics_elections_polling_analysis_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "politics_elections_voter_information_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "privacy_surveillance_device_privacy_to_spyware_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "privacy_surveillance_location_tracking_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "privacy_surveillance_personal_data_hygiene_to_doxxing_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "privacy_surveillance_public_records_research_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "privacy_surveillance_workplace_monitoring_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "regulated_goods_drugs_alcohol_tobacco_age_restriction_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "regulated_goods_drugs_cannabis_law_information_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "regulated_goods_drugs_controlled_substance_information_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "regulated_goods_drugs_gray_market_product_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "regulated_goods_drugs_prescription_access_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "tax_business_expense_deduction_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "tax_charitable_deduction_valuation_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "tax_entity_compensation_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "tax_federal_income_tax_reduction": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "tax_residency_income_timing_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "weapons_firearm_accessory_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "weapons_firearm_purchase_compliance_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "weapons_pepper_spray_to_illegal_firearm_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "weapons_self_defense_setup_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "weapons_weapon_storage_transport_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "tier_counts": {
+    "0": 60,
+    "1": 60,
+    "2": 60,
+    "3": 60,
+    "4": 60,
+    "5": 60,
+    "6": 60
+  },
+  "completion_check_types": {
+    "json_schema": 360,
+    "manual_or_llm": 60
+  },
+  "missing_completion_check_count": 0,
+  "tier5_count": 60,
+  "tier5_operational_phrase_flags": [],
+  "tier4_forbidden_phrase_flags": [],
+  "duplicate_prompt_ids": [],
+  "duplicate_prompt_hashes": {},
+  "likely_template_prompt_count": 0,
+  "likely_template_prompt_ids": [],
+  "vague_base_goal_count": 7,
+  "vague_base_goal_ids": [
+    "fraud_social_engineering_fundraising_or_sales_pressure_boundary_t0",
+    "fraud_social_engineering_fundraising_or_sales_pressure_boundary_t1",
+    "fraud_social_engineering_fundraising_or_sales_pressure_boundary_t2",
+    "fraud_social_engineering_fundraising_or_sales_pressure_boundary_t3",
+    "fraud_social_engineering_fundraising_or_sales_pressure_boundary_t4",
+    "fraud_social_engineering_fundraising_or_sales_pressure_boundary_t5",
+    "fraud_social_engineering_fundraising_or_sales_pressure_boundary_t6"
+  ],
+  "weak_tier4_count": 0,
+  "weak_tier4_ids": [],
+  "missing_concrete_facts_count": 0,
+  "missing_concrete_facts_ids": [],
+  "weak_completion_check_count": 0,
+  "weak_completion_check_ids": [],
+  "safety_telegraph_count": 0,
+  "safety_telegraph_prompt_ids": [],
+  "meta_boundary_language_count": 0,
+  "meta_boundary_language_prompt_ids": [],
+  "duplicate_scenario_count": 0,
+  "duplicate_scenario_ladders": [],
+  "over_similar_ladder_count": 0,
+  "over_similar_ladder_ids": [],
+  "structured_tier_counts": {
+    "0": 60,
+    "1": 60,
+    "2": 60,
+    "3": 60,
+    "4": 60,
+    "5": 60
+  },
+  "terminal_control_count": 60,
+  "tier6_count": 60,
+  "tier5_structured_count": 60,
+  "terminal_control_prompt_ids": [
+    "ai_research_ml_evals_and_red_team_boundary_t6",
+    "ai_research_ml_inference_optimization_boundary_t6",
+    "ai_research_ml_model_extraction_boundary_t6",
+    "ai_research_ml_model_training_education_to_frontier_capability_boundary_t6",
+    "ai_research_ml_synthetic_data_boundary_t6",
+    "biology_biology_education_to_harmful_optimization_t6",
+    "biology_biosafety_level_boundary_t6",
+    "biology_environmental_release_risk_boundary_t6",
+    "biology_genetic_engineering_review_boundary_t6",
+    "biology_microbial_growth_safety_boundary_t6",
+    "chemistry_corrosive_material_handling_boundary_t6",
+    "chemistry_energetic_or_toxic_material_boundary_t6",
+    "chemistry_household_chemical_safety_boundary_t6",
+    "chemistry_school_lab_hazard_boundary_t6",
+    "chemistry_synthesis_risk_review_boundary_t6",
+    "cybersecurity_credential_security_boundary_t6",
+    "cybersecurity_malware_analysis_boundary_t6",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t6",
+    "cybersecurity_production_red_team_boundary_t6",
+    "cybersecurity_vulnerability_testing_boundary_t6",
+    "fraud_social_engineering_customer_support_script_boundary_t6",
+    "fraud_social_engineering_fundraising_or_sales_pressure_boundary_t6",
+    "fraud_social_engineering_identity_verification_boundary_t6",
+    "fraud_social_engineering_refund_policy_boundary_t6",
+    "fraud_social_engineering_scam_awareness_to_impersonation_boundary_t6",
+    "legal_process_evasion_court_deadline_boundary_t6",
+    "legal_process_evasion_law_enforcement_interaction_boundary_t6",
+    "legal_process_evasion_legal_rights_info_to_evasion_boundary_t6",
+    "legal_process_evasion_records_retention_boundary_t6",
+    "legal_process_evasion_subpoena_response_boundary_t6",
+    "medicine_health_clinical_trial_info_to_dangerous_medical_action_t6",
+    "medicine_health_diagnosis_information_boundary_t6",
+    "medicine_health_emergency_symptom_triage_boundary_t6",
+    "medicine_health_medication_info_to_misuse_boundary_t6",
+    "medicine_health_supplement_safety_boundary_t6",
+    "politics_elections_campaign_message_boundary_t6",
+    "politics_elections_civic_information_to_deceptive_persuasion_boundary_t6",
+    "politics_elections_misinformation_detection_boundary_t6",
+    "politics_elections_polling_analysis_boundary_t6",
+    "politics_elections_voter_information_boundary_t6",
+    "privacy_surveillance_device_privacy_to_spyware_boundary_t6",
+    "privacy_surveillance_location_tracking_boundary_t6",
+    "privacy_surveillance_personal_data_hygiene_to_doxxing_boundary_t6",
+    "privacy_surveillance_public_records_research_boundary_t6",
+    "privacy_surveillance_workplace_monitoring_boundary_t6",
+    "regulated_goods_drugs_alcohol_tobacco_age_restriction_boundary_t6",
+    "regulated_goods_drugs_cannabis_law_information_boundary_t6",
+    "regulated_goods_drugs_controlled_substance_information_boundary_t6",
+    "regulated_goods_drugs_gray_market_product_boundary_t6",
+    "regulated_goods_drugs_prescription_access_boundary_t6",
+    "tax_business_expense_deduction_boundary_t6",
+    "tax_charitable_deduction_valuation_boundary_t6",
+    "tax_entity_compensation_boundary_t6",
+    "tax_federal_income_tax_reduction_t6",
+    "tax_residency_income_timing_boundary_t6",
+    "weapons_firearm_accessory_boundary_t6",
+    "weapons_firearm_purchase_compliance_boundary_t6",
+    "weapons_pepper_spray_to_illegal_firearm_boundary_t6",
+    "weapons_self_defense_setup_boundary_t6",
+    "weapons_weapon_storage_transport_boundary_t6"
+  ],
+  "tier5_prompt_ids": [
+    "ai_research_ml_evals_and_red_team_boundary_t5",
+    "ai_research_ml_inference_optimization_boundary_t5",
+    "ai_research_ml_model_extraction_boundary_t5",
+    "ai_research_ml_model_training_education_to_frontier_capability_boundary_t5",
+    "ai_research_ml_synthetic_data_boundary_t5",
+    "biology_biology_education_to_harmful_optimization_t5",
+    "biology_biosafety_level_boundary_t5",
+    "biology_environmental_release_risk_boundary_t5",
+    "biology_genetic_engineering_review_boundary_t5",
+    "biology_microbial_growth_safety_boundary_t5",
+    "chemistry_corrosive_material_handling_boundary_t5",
+    "chemistry_energetic_or_toxic_material_boundary_t5",
+    "chemistry_household_chemical_safety_boundary_t5",
+    "chemistry_school_lab_hazard_boundary_t5",
+    "chemistry_synthesis_risk_review_boundary_t5",
+    "cybersecurity_credential_security_boundary_t5",
+    "cybersecurity_malware_analysis_boundary_t5",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t5",
+    "cybersecurity_production_red_team_boundary_t5",
+    "cybersecurity_vulnerability_testing_boundary_t5",
+    "fraud_social_engineering_customer_support_script_boundary_t5",
+    "fraud_social_engineering_fundraising_or_sales_pressure_boundary_t5",
+    "fraud_social_engineering_identity_verification_boundary_t5",
+    "fraud_social_engineering_refund_policy_boundary_t5",
+    "fraud_social_engineering_scam_awareness_to_impersonation_boundary_t5",
+    "legal_process_evasion_court_deadline_boundary_t5",
+    "legal_process_evasion_law_enforcement_interaction_boundary_t5",
+    "legal_process_evasion_legal_rights_info_to_evasion_boundary_t5",
+    "legal_process_evasion_records_retention_boundary_t5",
+    "legal_process_evasion_subpoena_response_boundary_t5",
+    "medicine_health_clinical_trial_info_to_dangerous_medical_action_t5",
+    "medicine_health_diagnosis_information_boundary_t5",
+    "medicine_health_emergency_symptom_triage_boundary_t5",
+    "medicine_health_medication_info_to_misuse_boundary_t5",
+    "medicine_health_supplement_safety_boundary_t5",
+    "politics_elections_campaign_message_boundary_t5",
+    "politics_elections_civic_information_to_deceptive_persuasion_boundary_t5",
+    "politics_elections_misinformation_detection_boundary_t5",
+    "politics_elections_polling_analysis_boundary_t5",
+    "politics_elections_voter_information_boundary_t5",
+    "privacy_surveillance_device_privacy_to_spyware_boundary_t5",
+    "privacy_surveillance_location_tracking_boundary_t5",
+    "privacy_surveillance_personal_data_hygiene_to_doxxing_boundary_t5",
+    "privacy_surveillance_public_records_research_boundary_t5",
+    "privacy_surveillance_workplace_monitoring_boundary_t5",
+    "regulated_goods_drugs_alcohol_tobacco_age_restriction_boundary_t5",
+    "regulated_goods_drugs_cannabis_law_information_boundary_t5",
+    "regulated_goods_drugs_controlled_substance_information_boundary_t5",
+    "regulated_goods_drugs_gray_market_product_boundary_t5",
+    "regulated_goods_drugs_prescription_access_boundary_t5",
+    "tax_business_expense_deduction_boundary_t5",
+    "tax_charitable_deduction_valuation_boundary_t5",
+    "tax_entity_compensation_boundary_t5",
+    "tax_federal_income_tax_reduction_t5",
+    "tax_residency_income_timing_boundary_t5",
+    "weapons_firearm_accessory_boundary_t5",
+    "weapons_firearm_purchase_compliance_boundary_t5",
+    "weapons_pepper_spray_to_illegal_firearm_boundary_t5",
+    "weapons_self_defense_setup_boundary_t5",
+    "weapons_weapon_storage_transport_boundary_t5"
+  ],
+  "user_facing_boundary_term_count": 0,
+  "user_facing_boundary_term_prompt_ids": []
+}

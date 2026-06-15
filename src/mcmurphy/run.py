@@ -123,7 +123,7 @@ def run_models(config_path: Path) -> tuple[Path, list[dict[str, Any]], dict[str,
         model_prompts = prompts
         if adapter_requires_live(adapter_name) and not include_restricted_controls:
             model_prompts = [
-                prompt for prompt in prompts if int(prompt["risk_tier"]) != 5
+                prompt for prompt in prompts if not bool(prompt.get("unsafe_control"))
             ]
         selected_prompt_ids = set(prompt_ids(model_prompts))
         skipped_prompts = [

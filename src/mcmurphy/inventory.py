@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -101,6 +102,19 @@ META_BOUNDARY_LANGUAGE_PHRASES = (
     "benchmark",
 )
 
+USER_FACING_BOUNDARY_TERMS = (
+    "boundary",
+    "risk ladder",
+    "tier",
+    "benchmark",
+    "corpus",
+    "explicit illegal",
+    "harmful request",
+    "cross the line",
+    "safety boundary",
+    "compliance artifact",
+)
+
 
 def _category_for(record: dict[str, Any]) -> str:
     ladder = record.get("risk_ladder") or {}
@@ -137,6 +151,17 @@ def _phrase_flags(
 def _contains_any(value: str, phrases: tuple[str, ...]) -> bool:
     lowered = value.casefold()
     return any(phrase.casefold() in lowered for phrase in phrases)
+
+
+def _contains_any_wordlike(value: str, phrases: tuple[str, ...]) -> bool:
+    lowered = value.casefold()
+    return any(_phrase_present(lowered, phrase.casefold()) for phrase in phrases)
+
+
+def _phrase_present(value: str, phrase: str) -> bool:
+    if " " in phrase:
+        return phrase in value
+    return re.search(rf"\b{re.escape(phrase)}\b", value) is not None
 
 
 def likely_template_prompt_ids(records: list[dict[str, Any]]) -> list[str]:
@@ -179,8 +204,9 @@ def weak_tier4_ids(records: list[dict[str, Any]]) -> list[str]:
 
 def missing_concrete_facts_ids(records: list[dict[str, Any]]) -> list[str]:
     ids: list[str] = []
+    terminal_tier = 6 if is_v0_5_corpus(records) else 5
     for record in records:
-        if int(record.get("risk_tier", -1)) == 5:
+        if int(record.get("risk_tier", -1)) == terminal_tier:
             continue
         prompt = str(record.get("prompt", ""))
         lowered = prompt.casefold()
@@ -197,8 +223,9 @@ def missing_concrete_facts_ids(records: list[dict[str, Any]]) -> list[str]:
 
 def weak_completion_check_ids(records: list[dict[str, Any]]) -> list[str]:
     ids: list[str] = []
+    terminal_tier = 6 if is_v0_5_corpus(records) else 5
     for record in records:
-        if int(record.get("risk_tier", -1)) == 5:
+        if int(record.get("risk_tier", -1)) == terminal_tier:
             continue
         check = record.get("completion_check")
         if not isinstance(check, dict):
@@ -228,12 +255,23 @@ def meta_boundary_language_prompt_ids(records: list[dict[str, Any]]) -> list[str
     return sorted(
         str(record.get("prompt_id"))
         for record in records
-        if _contains_any(str(record.get("prompt", "")), META_BOUNDARY_LANGUAGE_PHRASES)
+        if _contains_any_wordlike(
+            str(record.get("prompt", "")),
+            META_BOUNDARY_LANGUAGE_PHRASES,
+        )
     )
 
 
 def is_v0_4_corpus(records: list[dict[str, Any]]) -> bool:
     return any("boundary_v0.4" in str(record.get("task_intent", "")) for record in records)
+
+
+def is_v0_5_corpus(records: list[dict[str, Any]]) -> bool:
+    return any("boundary_v0.5" in str(record.get("task_intent", "")) for record in records)
+
+
+def is_naturalistic_corpus(records: list[dict[str, Any]]) -> bool:
+    return is_v0_4_corpus(records) or is_v0_5_corpus(records)
 
 
 def _scenario_lines(record: dict[str, Any]) -> str:
@@ -306,6 +344,17 @@ def over_similar_ladder_ids(records: list[dict[str, Any]]) -> list[str]:
             if similarity >= 0.92:
                 flagged.update({left, right})
     return sorted(flagged)
+
+
+def user_facing_boundary_term_prompt_ids(records: list[dict[str, Any]]) -> list[str]:
+    return sorted(
+        str(record.get("prompt_id"))
+        for record in records
+        if _contains_any_wordlike(
+            str(record.get("prompt", "")),
+            USER_FACING_BOUNDARY_TERMS,
+        )
+    )
 
 
 def build_prompt_inventory(records: list[dict[str, Any]]) -> dict[str, Any]:
@@ -389,7 +438,7 @@ def build_prompt_inventory(records: list[dict[str, Any]]) -> dict[str, Any]:
         "weak_completion_check_count": len(weak_check_ids),
         "weak_completion_check_ids": weak_check_ids,
     }
-    if is_v0_4_corpus(records):
+    if is_naturalistic_corpus(records):
         safety_ids = safety_telegraph_prompt_ids(records)
         meta_ids = meta_boundary_language_prompt_ids(records)
         duplicate_ladders = duplicate_scenario_ladders(records)
@@ -404,6 +453,44 @@ def build_prompt_inventory(records: list[dict[str, Any]]) -> dict[str, Any]:
                 "duplicate_scenario_ladders": duplicate_ladders,
                 "over_similar_ladder_count": len(similar_ladders),
                 "over_similar_ladder_ids": similar_ladders,
+            }
+        )
+    if is_v0_5_corpus(records):
+        user_facing_ids = user_facing_boundary_term_prompt_ids(records)
+        terminal_ids = sorted(
+            str(record.get("prompt_id"))
+            for record in records
+            if int(record.get("risk_tier", -1)) == 6
+        )
+        tier5_ids = sorted(
+            str(record.get("prompt_id"))
+            for record in records
+            if int(record.get("risk_tier", -1)) == 5
+        )
+        inventory.update(
+            {
+                "structured_tier_counts": {
+                    str(tier): tier_counts.get(str(tier), 0)
+                    for tier in range(6)
+                },
+                "terminal_control_count": sum(
+                    1
+                    for record in records
+                    if int(record.get("risk_tier", -1)) == 6
+                    and bool(record.get("unsafe_control"))
+                ),
+                "tier6_count": tier_counts.get("6", 0),
+                "tier5_structured_count": sum(
+                    1
+                    for record in records
+                    if int(record.get("risk_tier", -1)) == 5
+                    and isinstance(record.get("completion_check"), dict)
+                    and record["completion_check"].get("check_type") != "manual_or_llm"
+                ),
+                "terminal_control_prompt_ids": terminal_ids,
+                "tier5_prompt_ids": tier5_ids,
+                "user_facing_boundary_term_count": len(user_facing_ids),
+                "user_facing_boundary_term_prompt_ids": user_facing_ids,
             }
         )
     return inventory
