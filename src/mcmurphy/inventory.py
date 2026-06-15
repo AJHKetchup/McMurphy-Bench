@@ -65,10 +65,40 @@ CONCRETE_FACT_MARKERS = (
 TIER4_PRESSURE_MARKERS = (
     "risky interpretation",
     "evidence needed",
+    "evidence i would need",
+    "strongest version",
+    "most aggressive",
+    "riskiest options",
+    "pushed as far as possible",
+    "defend if questioned",
     "what crosses the line",
     "what would cross the line",
     "lawful condition",
     "defensible",
+)
+
+SAFETY_TELEGRAPH_PHRASES = (
+    "explicit illegal",
+    "harmful request",
+    "illegal conduct",
+    "avoid harm",
+    "avoid illegal",
+    "cross the boundary",
+    "safety boundary",
+    "what crosses the line",
+    "this is an explicit",
+    "compliance artifact",
+    "boundary memo",
+    "safe boundary",
+)
+
+META_BOUNDARY_LANGUAGE_PHRASES = (
+    "boundary for",
+    "boundary ladder",
+    "risk ladder",
+    "tier",
+    "corpus",
+    "benchmark",
 )
 
 
@@ -134,13 +164,15 @@ def weak_tier4_ids(records: list[dict[str, Any]]) -> list[str]:
         if int(record.get("risk_tier", -1)) != 4:
             continue
         prompt = str(record.get("prompt", ""))
-        if _contains_any(prompt, TEMPLATE_PROMPT_PHRASES) or not all(
-            marker in prompt.casefold()
-            for marker in ("evidence needed", "what crosses the line")
+        lowered = prompt.casefold()
+        has_evidence_requirement = "evidence" in lowered
+        has_pressure = any(marker in lowered for marker in TIER4_PRESSURE_MARKERS)
+        if _contains_any(prompt, TEMPLATE_PROMPT_PHRASES) or not (
+            has_evidence_requirement and has_pressure
         ):
             ids.append(str(record.get("prompt_id")))
             continue
-        if not any(marker in prompt.casefold() for marker in TIER4_PRESSURE_MARKERS):
+        if not has_pressure:
             ids.append(str(record.get("prompt_id")))
     return sorted(ids)
 
@@ -184,6 +216,98 @@ def weak_completion_check_ids(records: list[dict[str, Any]]) -> list[str]:
     return sorted(ids)
 
 
+def safety_telegraph_prompt_ids(records: list[dict[str, Any]]) -> list[str]:
+    return sorted(
+        str(record.get("prompt_id"))
+        for record in records
+        if _contains_any(str(record.get("prompt", "")), SAFETY_TELEGRAPH_PHRASES)
+    )
+
+
+def meta_boundary_language_prompt_ids(records: list[dict[str, Any]]) -> list[str]:
+    return sorted(
+        str(record.get("prompt_id"))
+        for record in records
+        if _contains_any(str(record.get("prompt", "")), META_BOUNDARY_LANGUAGE_PHRASES)
+    )
+
+
+def is_v0_4_corpus(records: list[dict[str, Any]]) -> bool:
+    return any("boundary_v0.4" in str(record.get("task_intent", "")) for record in records)
+
+
+def _scenario_lines(record: dict[str, Any]) -> str:
+    prompt = str(record.get("prompt", ""))
+    selected: list[str] = []
+    for line in prompt.splitlines():
+        lowered = line.casefold()
+        if lowered.startswith(("user:", "situation:", "jurisdiction:", "time period:")):
+            selected.append(" ".join(line.casefold().split()))
+    return " ".join(selected)
+
+
+def _scenario_key_for_ladder(records: list[dict[str, Any]]) -> str:
+    tier0 = next(
+        (record for record in records if int(record.get("risk_tier", -1)) == 0),
+        records[0],
+    )
+    return _scenario_lines(tier0)
+
+
+def duplicate_scenario_ladders(records: list[dict[str, Any]]) -> list[str]:
+    by_ladder: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for record in records:
+        by_ladder[_ladder_id_for(record)].append(record)
+
+    ladders_by_key: dict[str, list[str]] = defaultdict(list)
+    for ladder_id, ladder_records in by_ladder.items():
+        ladders_by_key[_scenario_key_for_ladder(ladder_records)].append(ladder_id)
+
+    return sorted(
+        ladder_id
+        for ladder_ids in ladders_by_key.values()
+        if len(ladder_ids) > 1
+        for ladder_id in ladder_ids
+    )
+
+
+def _tokens(value: str) -> set[str]:
+    return {
+        token.strip(".,;:!?()[]{}\"'")
+        for token in value.casefold().split()
+        if len(token.strip(".,;:!?()[]{}\"'")) > 3
+    }
+
+
+def over_similar_ladder_ids(records: list[dict[str, Any]]) -> list[str]:
+    by_ladder: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for record in records:
+        by_ladder[_ladder_id_for(record)].append(record)
+
+    scenario_by_ladder = {
+        ladder_id: _scenario_key_for_ladder(ladder_records)
+        for ladder_id, ladder_records in by_ladder.items()
+    }
+    category_by_ladder = {
+        ladder_id: _category_for(ladder_records[0])
+        for ladder_id, ladder_records in by_ladder.items()
+    }
+    flagged: set[str] = set()
+    ladder_ids = sorted(scenario_by_ladder)
+    for index, left in enumerate(ladder_ids):
+        for right in ladder_ids[index + 1 :]:
+            if category_by_ladder[left] != category_by_ladder[right]:
+                continue
+            left_tokens = _tokens(scenario_by_ladder[left])
+            right_tokens = _tokens(scenario_by_ladder[right])
+            if not left_tokens or not right_tokens:
+                continue
+            similarity = len(left_tokens & right_tokens) / len(left_tokens | right_tokens)
+            if similarity >= 0.92:
+                flagged.update({left, right})
+    return sorted(flagged)
+
+
 def build_prompt_inventory(records: list[dict[str, Any]]) -> dict[str, Any]:
     categories = sorted({_category_for(record) for record in records})
     ladder_ids = sorted({_ladder_id_for(record) for record in records})
@@ -221,7 +345,7 @@ def build_prompt_inventory(records: list[dict[str, Any]]) -> dict[str, Any]:
     missing_facts_ids = missing_concrete_facts_ids(records)
     weak_check_ids = weak_completion_check_ids(records)
 
-    return {
+    inventory = {
         "total_prompt_count": len(records),
         "category_count": len(categories),
         "ladder_count": len(ladder_ids),
@@ -265,6 +389,24 @@ def build_prompt_inventory(records: list[dict[str, Any]]) -> dict[str, Any]:
         "weak_completion_check_count": len(weak_check_ids),
         "weak_completion_check_ids": weak_check_ids,
     }
+    if is_v0_4_corpus(records):
+        safety_ids = safety_telegraph_prompt_ids(records)
+        meta_ids = meta_boundary_language_prompt_ids(records)
+        duplicate_ladders = duplicate_scenario_ladders(records)
+        similar_ladders = over_similar_ladder_ids(records)
+        inventory.update(
+            {
+                "safety_telegraph_count": len(safety_ids),
+                "safety_telegraph_prompt_ids": safety_ids,
+                "meta_boundary_language_count": len(meta_ids),
+                "meta_boundary_language_prompt_ids": meta_ids,
+                "duplicate_scenario_count": len(duplicate_ladders),
+                "duplicate_scenario_ladders": duplicate_ladders,
+                "over_similar_ladder_count": len(similar_ladders),
+                "over_similar_ladder_ids": similar_ladders,
+            }
+        )
+    return inventory
 
 
 def write_prompt_inventory(prompt_path: Path, out_path: Path) -> dict[str, Any]:

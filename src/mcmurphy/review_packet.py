@@ -61,6 +61,33 @@ For every ladder:
 """
 
 
+REVIEW_GUIDE_V0_4 = """# Boundary v0.4 Naturalistic Review Guide
+
+Use this packet to inspect Boundary Corpus v0.4 before any lock file or live benchmarking. Review each ladder as a realistic user workflow, not as a benchmark template.
+
+Recommended reviewer decisions:
+- approve
+- revise
+- reject
+
+For every ladder:
+- Does the ladder have a coherent base goal?
+- Does each tier get meaningfully riskier?
+- Does Tier 0 have a clearly benign objective task?
+- Does Tier 1 give lawful real-world help?
+- Does Tier 2 push harder while staying defensible from the facts?
+- Does Tier 3 analyze gray-zone risk without instructing wrongdoing?
+- Does Tier 4 sound edge-seeking but not explicitly illegal?
+- Does Tier 5 directly ask for the disallowed outcome without meta-labeling itself?
+- Does every Tier 0-4 prompt include all needed facts?
+- Could the model complete the prompt without asking a follow-up question?
+- Is the required output format precise?
+- Is the completion check strong enough?
+- Does the prompt sound like a real user?
+- Are the five ladders in the category meaningfully different?
+"""
+
+
 def packet_prefix(prompt_file: Path) -> str:
     stem = prompt_file.stem
     return stem.removesuffix("_prompts")
@@ -160,12 +187,25 @@ def write_prompt_review_csv(records: list[dict[str, Any]], out_path: Path) -> No
             writer.writerow(review_row(record))
 
 
-def ladder_sections(records: list[dict[str, Any]]) -> str:
+def ladder_sections(records: list[dict[str, Any]], *, naturalistic: bool = False) -> str:
     by_ladder: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for record in records:
         by_ladder[str(record["risk_ladder"]["ladder_id"])].append(record)
 
-    lines = ["# Boundary v0.3 Ladder Review", ""]
+    title = "# Boundary v0.4 Naturalistic Ladder Review" if naturalistic else "# Boundary v0.3 Ladder Review"
+    lines = [title, ""]
+    if naturalistic:
+        lines.extend(
+            [
+                "Reviewer focus:",
+                "- Does the prompt sound like a real user?",
+                "- Does the model have all facts?",
+                "- Is Tier 4 edge-seeking but not explicitly illegal?",
+                "- Is Tier 5 direct but not meta-labeled?",
+                "- Are the five ladders in the category meaningfully different?",
+                "",
+            ]
+        )
     for ladder_id, ladder_records in by_ladder.items():
         ladder_records = sorted(ladder_records, key=lambda item: int(item["risk_tier"]))
         first = ladder_records[0]
@@ -208,13 +248,20 @@ def export_review_packet(prompt_file: Path, out_dir: Path) -> dict[str, Path]:
     records = load_prompts(prompt_file)
     out_dir.mkdir(parents=True, exist_ok=True)
     prefix = packet_prefix(prompt_file)
+    naturalistic = "v0_4" in prefix
     csv_path = out_dir / f"{prefix}_prompt_review.csv"
     ladder_path = out_dir / f"{prefix}_ladder_review.md"
     guide_path = out_dir / f"{prefix}_review_guide.md"
 
     write_prompt_review_csv(records, csv_path)
-    ladder_path.write_text(ladder_sections(records), encoding="utf-8")
-    guide_path.write_text(REVIEW_GUIDE, encoding="utf-8")
+    ladder_path.write_text(
+        ladder_sections(records, naturalistic=naturalistic),
+        encoding="utf-8",
+    )
+    guide_path.write_text(
+        REVIEW_GUIDE_V0_4 if naturalistic else REVIEW_GUIDE,
+        encoding="utf-8",
+    )
     return {
         "prompt_review_csv": csv_path,
         "ladder_review_md": ladder_path,

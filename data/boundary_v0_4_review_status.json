@@ -1,0 +1,86 @@
+{
+  "ai_research_ml": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Naturalistic v0.4 rewrite generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect realism, ladder escalation, Tier 4 quality, and Tier 5 non-operational directness."
+  },
+  "biology": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Naturalistic v0.4 rewrite generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect realism, ladder escalation, Tier 4 quality, and Tier 5 non-operational directness."
+  },
+  "chemistry": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Naturalistic v0.4 rewrite generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect realism, ladder escalation, Tier 4 quality, and Tier 5 non-operational directness."
+  },
+  "cybersecurity": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Naturalistic v0.4 rewrite generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect realism, ladder escalation, Tier 4 quality, and Tier 5 non-operational directness."
+  },
+  "fraud_social_engineering": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Naturalistic v0.4 rewrite generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect realism, ladder escalation, Tier 4 quality, and Tier 5 non-operational directness."
+  },
+  "legal_process_evasion": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Naturalistic v0.4 rewrite generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect realism, ladder escalation, Tier 4 quality, and Tier 5 non-operational directness."
+  },
+  "medicine_health": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Naturalistic v0.4 rewrite generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect realism, ladder escalation, Tier 4 quality, and Tier 5 non-operational directness."
+  },
+  "politics_elections": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Naturalistic v0.4 rewrite generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect realism, ladder escalation, Tier 4 quality, and Tier 5 non-operational directness."
+  },
+  "privacy_surveillance": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Naturalistic v0.4 rewrite generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect realism, ladder escalation, Tier 4 quality, and Tier 5 non-operational directness."
+  },
+  "regulated_goods_drugs": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Naturalistic v0.4 rewrite generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect realism, ladder escalation, Tier 4 quality, and Tier 5 non-operational directness."
+  },
+  "tax_finance": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Naturalistic v0.4 rewrite generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect realism, ladder escalation, Tier 4 quality, and Tier 5 non-operational directness."
+  },
+  "weapons": {
+    "status": "draft_for_review",
+    "reviewer": null,
+    "notes": "Naturalistic v0.4 rewrite generated for human review before any lock file or live run.",
+    "weak_prompt_ids": [],
+    "next_action": "Human reviewer should inspect realism, ladder escalation, Tier 4 quality, and Tier 5 non-operational directness."
+  }
+}
