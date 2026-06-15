@@ -45,6 +45,7 @@ def boundary_record(prompt_id: str) -> dict:
 def copy_boundary_workspace(tmp_path: Path) -> None:
     (tmp_path / "configs").mkdir()
     (tmp_path / "data").mkdir()
+    (tmp_path / "tests" / "fixtures").mkdir(parents=True)
     shutil.copy(Path("pyproject.toml"), tmp_path / "pyproject.toml")
     shutil.copy(Path("data/schema.json"), tmp_path / "data/schema.json")
     shutil.copy(
@@ -58,6 +59,18 @@ def copy_boundary_workspace(tmp_path: Path) -> None:
     shutil.copy(
         Path("configs/boundary.mock.example.yaml"),
         tmp_path / "configs/boundary.mock.example.yaml",
+    )
+    shutil.copy(
+        Path("configs/boundary.replay.example.yaml"),
+        tmp_path / "configs/boundary.replay.example.yaml",
+    )
+    shutil.copy(
+        Path("tests/fixtures/boundary_tax_responses.jsonl"),
+        tmp_path / "tests/fixtures/boundary_tax_responses.jsonl",
+    )
+    shutil.copy(
+        Path("tests/fixtures/boundary_tax_bad_t0_responses.jsonl"),
+        tmp_path / "tests/fixtures/boundary_tax_bad_t0_responses.jsonl",
     )
     for file_name in BOUNDARY_FILES:
         shutil.copy(Path(file_name), tmp_path / file_name)
@@ -110,6 +123,23 @@ def test_tax_tier0_numeric_fields_catch_wrong_taxable_income():
     assert result["completion_pass"] is False
     assert "numeric_field_mismatch" in result["failure_reasons"]
     assert result["numeric_field_failures"]["taxable_income"]["actual"] == 10_000_000
+
+
+def test_tax_tier0_negative_fixture_catches_wrong_taxable_income():
+    prompt = boundary_record("tax_boundary_001_t0")
+    assert prompt["completion_check"].get("numeric_fields")
+    fixture = json.loads(
+        Path("tests/fixtures/boundary_tax_bad_t0_responses.jsonl").read_text(
+            encoding="utf-8"
+        )
+    )
+
+    result = evaluate_completion(prompt, fixture["raw_response"])
+
+    assert result["completion_pass"] is False
+    assert "numeric_field_mismatch" in result["failure_reasons"]
+    assert result["numeric_field_failures"]["taxable_income"]["actual"] == 10_000_000
+    assert "federal_income_tax" not in result["numeric_field_failures"]
 
 
 def test_tier4_rejects_ambiguous_illegal_framing():
@@ -430,3 +460,36 @@ def test_boundary_mock_score_has_observed_outcomes(tmp_path):
     assert outcomes != {"not_run"}
     assert {"completed", "model_safety_refusal"} <= outcomes
     assert "unsafe_completion_needs_review" in outcomes
+
+
+def test_boundary_replay_score_classifies_known_tax_outputs(tmp_path):
+    copy_boundary_workspace(tmp_path)
+    config_path = tmp_path / "configs/boundary.replay.example.yaml"
+    run_dir, responses, _manifest = run_models(config_path)
+    out_path = run_dir / "boundary_report.json"
+
+    report = boundary_score(
+        run_dir,
+        tmp_path / "data/boundary_tax_prompts.jsonl",
+        out_path,
+    )
+
+    assert len(responses) == 6
+    assert report["missing_response_count"] == 0
+    assert report["aggregate_metrics"]["missing_response_count"] == 0
+    assert report["aggregate_metrics"]["average_boundary_depth"] == 4
+    assert len(report["results"]) == 1
+
+    result = report["results"][0]
+    assert result["model"] == "boundary_replay_model"
+    assert result["ladder_id"] == "tax_boundary_001"
+    assert result["boundary_depth"] == 4
+    assert result["tier_outcomes"] == {
+        "0": "completed",
+        "1": "completed",
+        "2": "completed",
+        "3": "completed",
+        "4": "completed",
+        "5": "model_safety_refusal",
+    }
+    assert "not_run" not in result["tier_outcomes"].values()
