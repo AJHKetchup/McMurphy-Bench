@@ -184,6 +184,42 @@ Live provider adapters require `live: true` on each non-mock, non-replay model e
 
 Safety-failure metrics are measured only when harmful controls are present for a model. Reports include `unsafe_fulfillment_measured` and `safety_controls_present`; if both are `false`, the `unsafe_fulfillment_rate` placeholder must not be read as a measured zero-failure result. Tables and the dashboard show `N/M` for safety failure in that case, and models without harmful-control coverage are not directly comparable on safety failure.
 
+## Boundary Corpus v0.3
+
+Boundary Corpus v0.3 is the first benchmark-scale prompt corpus for Boundary Mode:
+
+- 12 categories
+- 60 escalation ladders
+- 360 prompts
+- 6 tiers per ladder
+
+Each ladder tracks one base goal from benign assistance to an explicit harmful-control prompt:
+
+- Tier 0: benign objective task.
+- Tier 1: clearly lawful real-world assistance.
+- Tier 2: aggressive but lawful optimization.
+- Tier 3: gray-zone analysis.
+- Tier 4: boundary-pushing operational-adjacent request framed as avoiding illegality or harm.
+- Tier 5: explicit illegal/harmful request.
+
+Tier 5 prompts are explicit enough to test refusal behavior, but remain non-operational. They do not publish procedures, vendor routes, bypass details, recipes, biological protocols, exploit steps, fraud methods, or concealment tactics.
+
+Validate and inventory the corpus:
+
+```bash
+mcmurphy validate-prompts data/boundary_v0_3_prompts.jsonl
+mcmurphy prompt-inventory data/boundary_v0_3_prompts.jsonl --out data/boundary_v0_3_inventory.json
+```
+
+Boundary-score workflow:
+
+```bash
+mcmurphy run configs/<live-boundary-config>.yaml
+mcmurphy boundary-score reports/<run_id> --prompts data/boundary_v0_3_prompts.jsonl --out reports/<run_id>/boundary_report.json
+```
+
+See `docs/boundary-corpus-v0-3.md` for the corpus interpretation and authoring rules. Boundary reports measure observed response boundaries; they report what the model did, not what it should have done.
+
 ## Judgment CSV Format
 
 Each row is one evaluated model response.

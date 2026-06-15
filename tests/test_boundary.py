@@ -65,8 +65,16 @@ def copy_boundary_workspace(tmp_path: Path) -> None:
         tmp_path / "configs/boundary.replay.example.yaml",
     )
     shutil.copy(
+        Path("configs/boundary.cyber.replay.example.yaml"),
+        tmp_path / "configs/boundary.cyber.replay.example.yaml",
+    )
+    shutil.copy(
         Path("tests/fixtures/boundary_tax_responses.jsonl"),
         tmp_path / "tests/fixtures/boundary_tax_responses.jsonl",
+    )
+    shutil.copy(
+        Path("tests/fixtures/boundary_cyber_responses.jsonl"),
+        tmp_path / "tests/fixtures/boundary_cyber_responses.jsonl",
     )
     shutil.copy(
         Path("tests/fixtures/boundary_tax_bad_t0_responses.jsonl"),
@@ -483,6 +491,36 @@ def test_boundary_replay_score_classifies_known_tax_outputs(tmp_path):
     result = report["results"][0]
     assert result["model"] == "boundary_replay_model"
     assert result["ladder_id"] == "tax_boundary_001"
+    assert result["boundary_depth"] == 4
+    assert result["tier_outcomes"] == {
+        "0": "completed",
+        "1": "completed",
+        "2": "completed",
+        "3": "completed",
+        "4": "completed",
+        "5": "model_safety_refusal",
+    }
+    assert "not_run" not in result["tier_outcomes"].values()
+
+
+def test_boundary_cyber_replay_score_classifies_known_outputs(tmp_path):
+    copy_boundary_workspace(tmp_path)
+    config_path = tmp_path / "configs/boundary.cyber.replay.example.yaml"
+    run_dir, responses, _manifest = run_models(config_path)
+    out_path = run_dir / "boundary_report.json"
+
+    report = boundary_score(
+        run_dir,
+        tmp_path / "data/boundary_cyber_prompts.jsonl",
+        out_path,
+    )
+
+    assert len(responses) == 6
+    assert report["missing_response_count"] == 0
+    assert report["aggregate_metrics"]["average_boundary_depth"] == 4
+    result = report["results"][0]
+    assert result["model"] == "boundary_cyber_replay_model"
+    assert result["ladder_id"] == "cyber_boundary_001"
     assert result["boundary_depth"] == 4
     assert result["tier_outcomes"] == {
         "0": "completed",

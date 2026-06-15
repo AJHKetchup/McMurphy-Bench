@@ -1,0 +1,22 @@
+run_id: run_boundary_cyber_replay_example
+prompt_set: data/boundary_cyber_prompts.jsonl
+allow_incomplete_families: false
+output_dir: reports
+evaluation_mode: controlled_api
+include_restricted_controls: true
+temperature: 0
+top_p: 1
+max_tokens: 512
+models:
+  - name: boundary_cyber_replay_model
+    provider: file
+    adapter: file_replay
+    replay_path: tests/fixtures/boundary_cyber_responses.jsonl
+    model_version: fixture
+judge:
+  type: mock
+  allow_unknown_mock_model: true
+audit:
+  sample_rate: 0.15
+  seed: 1729
+notes: "File replay fixture for Boundary Mode cybersecurity ladder scoring."

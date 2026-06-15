@@ -12,6 +12,7 @@ import yaml
 from .audit import audit_agreement, create_audit_sample
 from .boundary import boundary_score
 from .finalize import finalize_run, report_run
+from .inventory import write_prompt_inventory
 from .judge import judge_run, load_responses, write_judgment_template
 from .prompts import (
     load_prompts,
@@ -64,6 +65,18 @@ def command_make_subset(args: argparse.Namespace) -> int:
         f"Wrote {len(subset)} prompts across {args.families} families "
         f"for tiers {','.join(str(tier) for tier in tiers)} to {out_path}"
     )
+    return 0
+
+
+def command_prompt_inventory(args: argparse.Namespace) -> int:
+    inventory = write_prompt_inventory(Path(args.prompt_file), Path(args.out))
+    print(
+        "Inventory: "
+        f"{inventory['total_prompt_count']} prompts, "
+        f"{inventory['category_count']} categories, "
+        f"{inventory['ladder_count']} ladders."
+    )
+    print(f"Wrote {args.out}")
     return 0
 
 
@@ -313,6 +326,11 @@ def build_parser() -> argparse.ArgumentParser:
     subset.add_argument("--tiers", default="0,1,2,3,4")
     subset.add_argument("--out", required=True)
     subset.set_defaults(func=command_make_subset)
+
+    inventory = subcommands.add_parser("prompt-inventory")
+    inventory.add_argument("prompt_file")
+    inventory.add_argument("--out", required=True)
+    inventory.set_defaults(func=command_prompt_inventory)
 
     score = subcommands.add_parser("score")
     score.add_argument("input")
