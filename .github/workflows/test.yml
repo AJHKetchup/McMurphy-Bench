@@ -35,6 +35,12 @@ jobs:
       - name: Run pilot mock loop
         run: mcmurphy loop configs/pilot.mock.example.yaml
 
+      - name: Run boundary mock loop
+        run: mcmurphy loop configs/boundary.mock.example.yaml
+
+      - name: Score boundary mock run
+        run: mcmurphy boundary-score reports/run_boundary_mock_example --prompts data/boundary_seed_prompts.jsonl --out reports/run_boundary_mock_example/boundary_report.json
+
       - name: Finalize pilot mock run
         run: mcmurphy finalize-run reports/run_pilot_mock_example --judgments reports/run_pilot_mock_example/judgments.jsonl --audit-sample-rate 0.20 --audit-seed 1729
 

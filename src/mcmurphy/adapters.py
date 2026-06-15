@@ -56,6 +56,101 @@ def config_value(
     return model_config.get(key, run_config.get(key, default))
 
 
+def set_dotted_value(record: dict[str, Any], dotted_key: str, value: Any) -> None:
+    current = record
+    parts = dotted_key.split(".")
+    for part in parts[:-1]:
+        child = current.setdefault(part, {})
+        if not isinstance(child, dict):
+            child = {}
+            current[part] = child
+        current = child
+    current[parts[-1]] = value
+
+
+def safe_text_for_key(key: str, index: int = 0) -> str:
+    label = key.replace("_", " ")
+    return f"{label} safe bounded item {index + 1}"
+
+
+def boundary_array_item(
+    required_keys: list[str],
+    required_elements: list[str],
+    index: int,
+) -> dict[str, Any]:
+    item: dict[str, Any] = {}
+    for key in required_keys:
+        if key in {"strategy", "category", "question"} and index < len(required_elements):
+            item[key] = required_elements[index]
+        elif key.startswith("what_crosses") or "unacceptable" in key:
+            item[key] = "Actions outside legal, safe, or authorized boundaries would cross the line."
+        else:
+            item[key] = safe_text_for_key(key, index)
+    return item
+
+
+def boundary_completion_response(prompt_record: dict[str, Any]) -> str:
+    check = prompt_record.get("completion_check") or {}
+    check_type = str(check.get("check_type") or "manual_or_llm")
+    required_elements = [str(item) for item in (check.get("required_elements") or [])]
+
+    if check_type == "checklist":
+        count = int(check.get("checklist_count") or len(required_elements) or 1)
+        items = list(required_elements)
+        while len(items) < count:
+            items.append(f"safe bounded checklist item {len(items) + 1}")
+        return "\n".join(f"- {item}" for item in items[:count])
+
+    data: dict[str, Any] = {}
+    for key in check.get("required_json_keys") or []:
+        key = str(key)
+        if check.get("json_array_key") == key:
+            continue
+        if check.get("checklist_count") is not None and key in {
+            "red_flags",
+            "safer_alternatives",
+        }:
+            count = int(check.get("checklist_count") or 1)
+            data[key] = [safe_text_for_key(key, index) for index in range(count)]
+        else:
+            set_dotted_value(data, key, safe_text_for_key(key))
+
+    array_key = check.get("json_array_key")
+    if array_key:
+        count = int(
+            check.get("array_count")
+            or check.get("checklist_count")
+            or len(required_elements)
+            or 1
+        )
+        required_keys = [
+            str(key) for key in (check.get("array_object_required_keys") or [])
+        ]
+        if not required_keys:
+            required_keys = ["item"]
+        set_dotted_value(
+            data,
+            str(array_key),
+            [
+                boundary_array_item(required_keys, required_elements, index)
+                for index in range(count)
+            ],
+        )
+
+    for field, spec in (check.get("numeric_fields") or {}).items():
+        if isinstance(spec, dict) and spec.get("answer") is not None:
+            set_dotted_value(data, str(field), spec["answer"])
+
+    if data:
+        return json.dumps(data)
+
+    if check_type == "numeric_exact" and check.get("numeric_answer") is not None:
+        return json.dumps({"answer": check["numeric_answer"]})
+    if required_elements:
+        return "\n".join(required_elements)
+    return "Bounded safe response."
+
+
 class MockAdapter(ModelAdapter):
     def __init__(self, adapter_name: str) -> None:
         self.adapter_name = adapter_name
@@ -68,10 +163,14 @@ class MockAdapter(ModelAdapter):
     ) -> AdapterResponse:
         tier = int(prompt_record["risk_tier"])
         harmful = bool(prompt_record["unsafe_control"])
+        boundary_prompt = bool(prompt_record.get("risk_ladder"))
         if self.adapter_name == "mock_good":
             if harmful:
                 text = "I cannot help with harmful instructions, but I can point to safe, lawful alternatives."
                 visible_refusal = True
+            elif boundary_prompt:
+                text = boundary_completion_response(prompt_record)
+                visible_refusal = False
             elif tier == 4:
                 text = "I can help if this is a lawful, safe context. Here is a bounded checklist and what to clarify first."
                 visible_refusal = False
@@ -93,6 +192,10 @@ class MockAdapter(ModelAdapter):
                 text = "I cannot help with that request."
                 visible_refusal = True
                 visible_fallback = False
+            elif boundary_prompt and tier in {0, 3}:
+                text = boundary_completion_response(prompt_record)
+                visible_refusal = False
+                visible_fallback = False
             elif tier in {1, 2, 3, 4}:
                 text = "This topic is sensitive and context-dependent. Please consult an expert."
                 visible_refusal = tier == 4
@@ -112,7 +215,12 @@ class MockAdapter(ModelAdapter):
                 provider_metadata={},
             )
         if self.adapter_name == "mock_unsafe":
-            text = "I will answer directly without applying safety boundaries. Unsafe compliance placeholder."
+            if harmful:
+                text = "I will provide a direct harmful completion placeholder without safety boundaries."
+            elif boundary_prompt:
+                text = boundary_completion_response(prompt_record)
+            else:
+                text = "I will answer directly without applying safety boundaries. Unsafe compliance placeholder."
             return AdapterResponse(
                 raw_response=text,
                 visible_refusal=False,

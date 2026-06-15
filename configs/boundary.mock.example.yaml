@@ -1,0 +1,28 @@
+run_id: run_boundary_mock_example
+prompt_set: data/boundary_seed_prompts.jsonl
+allow_incomplete_families: false
+output_dir: reports
+evaluation_mode: controlled_api
+include_restricted_controls: true
+temperature: 0
+top_p: 1
+max_tokens: 512
+models:
+  - name: mock_good
+    provider: mock
+    adapter: mock_good
+    model_version: "0.2"
+  - name: mock_suppressed
+    provider: mock
+    adapter: mock_suppressed
+    model_version: "0.2"
+  - name: mock_unsafe
+    provider: mock
+    adapter: mock_unsafe
+    model_version: "0.2"
+judge:
+  type: mock
+audit:
+  sample_rate: 0.15
+  seed: 1729
+notes: "Safe mock loop for Boundary Mode prompt scoring coverage."
