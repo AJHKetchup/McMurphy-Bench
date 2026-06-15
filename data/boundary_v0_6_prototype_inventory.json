@@ -1,0 +1,192 @@
+{
+  "total_prompt_count": 28,
+  "category_count": 2,
+  "ladder_count": 4,
+  "prompts_by_category": {
+    "cybersecurity": 14,
+    "tax_finance": 14
+  },
+  "ladders_by_category": {
+    "cybersecurity": [
+      "cybersecurity_credential_security_boundary",
+      "cybersecurity_phishing_defense_to_phishing_abuse"
+    ],
+    "tax_finance": [
+      "tax_business_expense_deduction_boundary",
+      "tax_federal_income_tax_reduction"
+    ]
+  },
+  "tiers_present_by_ladder": {
+    "cybersecurity_credential_security_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "cybersecurity_phishing_defense_to_phishing_abuse": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "tax_business_expense_deduction_boundary": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "tax_federal_income_tax_reduction": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ]
+  },
+  "tier_counts": {
+    "0": 4,
+    "1": 4,
+    "2": 4,
+    "3": 4,
+    "4": 4,
+    "5": 4,
+    "6": 4
+  },
+  "completion_check_types": {
+    "json_schema": 24,
+    "manual_or_llm": 4
+  },
+  "missing_completion_check_count": 0,
+  "tier5_count": 4,
+  "tier5_operational_phrase_flags": [],
+  "tier4_forbidden_phrase_flags": [],
+  "duplicate_prompt_ids": [],
+  "duplicate_prompt_hashes": {
+    "7ce72c940495a6637a8d4844842b8663d8b433198b195717aac8a91b2bab2b80": [
+      "tax_federal_income_tax_reduction_t6",
+      "tax_business_expense_deduction_boundary_t6"
+    ]
+  },
+  "likely_template_prompt_count": 0,
+  "likely_template_prompt_ids": [],
+  "vague_base_goal_count": 0,
+  "vague_base_goal_ids": [],
+  "weak_tier4_count": 0,
+  "weak_tier4_ids": [],
+  "missing_concrete_facts_count": 0,
+  "missing_concrete_facts_ids": [],
+  "weak_completion_check_count": 0,
+  "weak_completion_check_ids": [],
+  "safety_telegraph_count": 0,
+  "safety_telegraph_prompt_ids": [],
+  "meta_boundary_language_count": 0,
+  "meta_boundary_language_prompt_ids": [],
+  "duplicate_scenario_count": 0,
+  "duplicate_scenario_ladders": [],
+  "over_similar_ladder_count": 0,
+  "over_similar_ladder_ids": [],
+  "structured_tier_counts": {
+    "0": 4,
+    "1": 4,
+    "2": 4,
+    "3": 4,
+    "4": 4,
+    "5": 4
+  },
+  "terminal_control_count": 4,
+  "tier6_count": 4,
+  "tier5_structured_count": 4,
+  "terminal_control_prompt_ids": [
+    "cybersecurity_credential_security_boundary_t6",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t6",
+    "tax_business_expense_deduction_boundary_t6",
+    "tax_federal_income_tax_reduction_t6"
+  ],
+  "tier5_prompt_ids": [
+    "cybersecurity_credential_security_boundary_t5",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t5",
+    "tax_business_expense_deduction_boundary_t5",
+    "tax_federal_income_tax_reduction_t5"
+  ],
+  "user_facing_boundary_term_count": 0,
+  "user_facing_boundary_term_prompt_ids": [],
+  "json_style_prompt_count": 0,
+  "json_style_prompt_ids": [],
+  "key_schema_language_count": 0,
+  "key_schema_language_prompt_ids": [],
+  "benchmark_boilerplate_count": 0,
+  "benchmark_boilerplate_prompt_ids": [],
+  "natural_prompt_count": 28,
+  "natural_prompt_ids": [
+    "cybersecurity_credential_security_boundary_t0",
+    "cybersecurity_credential_security_boundary_t1",
+    "cybersecurity_credential_security_boundary_t2",
+    "cybersecurity_credential_security_boundary_t3",
+    "cybersecurity_credential_security_boundary_t4",
+    "cybersecurity_credential_security_boundary_t5",
+    "cybersecurity_credential_security_boundary_t6",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t0",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t1",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t2",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t3",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t4",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t5",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t6",
+    "tax_business_expense_deduction_boundary_t0",
+    "tax_business_expense_deduction_boundary_t1",
+    "tax_business_expense_deduction_boundary_t2",
+    "tax_business_expense_deduction_boundary_t3",
+    "tax_business_expense_deduction_boundary_t4",
+    "tax_business_expense_deduction_boundary_t5",
+    "tax_business_expense_deduction_boundary_t6",
+    "tax_federal_income_tax_reduction_t0",
+    "tax_federal_income_tax_reduction_t1",
+    "tax_federal_income_tax_reduction_t2",
+    "tax_federal_income_tax_reduction_t3",
+    "tax_federal_income_tax_reduction_t4",
+    "tax_federal_income_tax_reduction_t5",
+    "tax_federal_income_tax_reduction_t6"
+  ],
+  "scoring_contract_count": 28,
+  "scoring_contract_prompt_ids": [
+    "cybersecurity_credential_security_boundary_t0",
+    "cybersecurity_credential_security_boundary_t1",
+    "cybersecurity_credential_security_boundary_t2",
+    "cybersecurity_credential_security_boundary_t3",
+    "cybersecurity_credential_security_boundary_t4",
+    "cybersecurity_credential_security_boundary_t5",
+    "cybersecurity_credential_security_boundary_t6",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t0",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t1",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t2",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t3",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t4",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t5",
+    "cybersecurity_phishing_defense_to_phishing_abuse_t6",
+    "tax_business_expense_deduction_boundary_t0",
+    "tax_business_expense_deduction_boundary_t1",
+    "tax_business_expense_deduction_boundary_t2",
+    "tax_business_expense_deduction_boundary_t3",
+    "tax_business_expense_deduction_boundary_t4",
+    "tax_business_expense_deduction_boundary_t5",
+    "tax_business_expense_deduction_boundary_t6",
+    "tax_federal_income_tax_reduction_t0",
+    "tax_federal_income_tax_reduction_t1",
+    "tax_federal_income_tax_reduction_t2",
+    "tax_federal_income_tax_reduction_t3",
+    "tax_federal_income_tax_reduction_t4",
+    "tax_federal_income_tax_reduction_t5",
+    "tax_federal_income_tax_reduction_t6"
+  ]
+}

@@ -274,6 +274,102 @@
         }
       }
     },
+    "scoring_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_type",
+        "required_item_count",
+        "required_concepts",
+        "required_fields",
+        "forbidden_anywhere",
+        "forbidden_as_instruction",
+        "numeric_fields",
+        "pass_conditions",
+        "fail_conditions",
+        "notes"
+      ],
+      "properties": {
+        "artifact_type": {
+          "type": "string",
+          "enum": [
+            "short_answer",
+            "checklist",
+            "table",
+            "memo",
+            "bullets",
+            "calculation",
+            "json_allowed"
+          ]
+        },
+        "required_item_count": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "required_concepts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "required_fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "forbidden_anywhere": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "forbidden_as_instruction": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "numeric_fields": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "answer",
+              "tolerance"
+            ],
+            "properties": {
+              "answer": {
+                "type": "number"
+              },
+              "tolerance": {
+                "type": "number",
+                "minimum": 0
+              }
+            }
+          }
+        },
+        "pass_conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fail_conditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
     "prompt_instance": {
       "type": "object",
       "additionalProperties": false,
@@ -360,6 +456,9 @@
         },
         "completion_check": {
           "$ref": "#/$defs/completion_check"
+        },
+        "scoring_contract": {
+          "$ref": "#/$defs/scoring_contract"
         },
         "prompt": {
           "type": "string"

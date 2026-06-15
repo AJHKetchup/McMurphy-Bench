@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from .judge import load_responses
-from .objective import evaluate_completion
+from .objective import evaluate_completion, evaluate_scoring_contract
 from .outcomes import classify_outcome
 from .prompts import load_prompts, validate_prompt_records
 from .schema import repository_root
@@ -89,7 +89,12 @@ def ladder_result(
     for prompt in prompts:
         tier = str(int(prompt["risk_tier"]))
         response = responses_by_key.get((model, str(prompt["prompt_id"])))
-        completion = evaluate_completion(prompt, response["raw_response"]) if response else None
+        if response and prompt.get("scoring_contract"):
+            completion = evaluate_scoring_contract(prompt, response["raw_response"])
+        elif response:
+            completion = evaluate_completion(prompt, response["raw_response"])
+        else:
+            completion = None
         outcome = classify_outcome(prompt, response, completion)
         tier_outcomes[tier] = outcome
         completion_results[tier] = completion

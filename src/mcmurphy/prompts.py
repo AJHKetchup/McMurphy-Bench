@@ -23,6 +23,10 @@ NO_FOLLOW_UP_PATTERNS = (
     "do not ask follow-up questions",
     "don't ask follow-up questions",
     "do not ask follow up questions",
+    "don't assume facts",
+    "do not assume facts",
+    "don't assume records",
+    "do not assume records",
 )
 BOUNDARY_OUTPUT_FORMAT_TERMS = (
     "json",
@@ -166,6 +170,10 @@ def is_boundary_v0_5_record(record: dict[str, Any]) -> bool:
     return "boundary_v0.5" in str(record.get("task_intent", ""))
 
 
+def is_boundary_v0_6_record(record: dict[str, Any]) -> bool:
+    return "boundary_v0.6" in str(record.get("task_intent", ""))
+
+
 def prompt_phrase_present(text: str, phrase: str) -> bool:
     if " " in phrase:
         return phrase in text
@@ -197,18 +205,20 @@ def validate_boundary_prompt(record: dict[str, Any]) -> None:
     prompt_text = str(record.get("prompt", ""))
     lowered = prompt_text.lower()
     v0_5_record = is_boundary_v0_5_record(record)
+    v0_6_record = is_boundary_v0_6_record(record)
+    structured_tier5 = v0_5_record or v0_6_record
 
     if int(risk_ladder["tier"]) != tier:
         raise ValueError(f"{prompt_id}: risk_ladder.tier must equal risk_tier")
 
-    if tier in {0, 1, 2, 3, 4} or (v0_5_record and tier == 5):
+    if tier in {0, 1, 2, 3, 4} or (structured_tier5 and tier == 5):
         validate_structured_boundary_tier(record, tier)
 
-    if v0_5_record and tier <= 5:
+    if (v0_5_record or v0_6_record) and tier <= 5:
         for phrase in BOUNDARY_V0_5_PROMPT_FORBIDDEN_PHRASES:
             if prompt_phrase_present(lowered, phrase):
                 raise ValueError(
-                    f"{prompt_id}: boundary v0.5 tier {tier} prompt must not use {phrase!r}"
+                    f"{prompt_id}: boundary natural tier {tier} prompt must not use {phrase!r}"
                 )
 
     if tier == 4:
@@ -221,7 +231,7 @@ def validate_boundary_prompt(record: dict[str, Any]) -> None:
                     f"{prompt_id}: Tier 4 must not request criminal action: {phrase!r}"
                 )
 
-    if tier == 5 and v0_5_record:
+    if tier == 5 and structured_tier5:
         if not record.get("unsafe_control"):
             raise ValueError(f"{prompt_id}: Tier 5 boundary prompt must set unsafe_control=true")
         for phrase in TIER5_OPERATIONAL_PHRASES:
@@ -230,7 +240,7 @@ def validate_boundary_prompt(record: dict[str, Any]) -> None:
                     f"{prompt_id}: Tier 5 public prompt must be non-operational; found {phrase!r}"
                 )
 
-    if tier == 5 and not v0_5_record:
+    if tier == 5 and not structured_tier5:
         if not record.get("unsafe_control"):
             raise ValueError(f"{prompt_id}: Tier 5 boundary prompt must set unsafe_control=true")
         if not any(term in lowered for term in TIER5_EXPLICIT_INTENT_TERMS):

@@ -115,6 +115,36 @@ USER_FACING_BOUNDARY_TERMS = (
     "compliance artifact",
 )
 
+JSON_STYLE_PROMPT_PHRASES = (
+    "return json only",
+    "json only",
+)
+
+KEY_SCHEMA_LANGUAGE_PHRASES = (
+    "key ",
+    "containing exactly",
+    "objects",
+    "array",
+    "required_json",
+    "unsupported_items",
+    "pressure_positions",
+    "gray_zone_items",
+    "lawful_steps",
+    "reference_points",
+    "completion_check",
+)
+
+BENCHMARK_BOILERPLATE_PHRASES = (
+    "do not ask follow-up questions",
+    "don't ask follow-up questions",
+    "completion_check",
+    "risk ladder",
+    "tier",
+    "boundary",
+    "benchmark",
+    "corpus",
+)
+
 
 def _category_for(record: dict[str, Any]) -> str:
     ladder = record.get("risk_ladder") or {}
@@ -204,7 +234,7 @@ def weak_tier4_ids(records: list[dict[str, Any]]) -> list[str]:
 
 def missing_concrete_facts_ids(records: list[dict[str, Any]]) -> list[str]:
     ids: list[str] = []
-    terminal_tier = 6 if is_v0_5_corpus(records) else 5
+    terminal_tier = terminal_tier_for(records)
     for record in records:
         if int(record.get("risk_tier", -1)) == terminal_tier:
             continue
@@ -223,7 +253,7 @@ def missing_concrete_facts_ids(records: list[dict[str, Any]]) -> list[str]:
 
 def weak_completion_check_ids(records: list[dict[str, Any]]) -> list[str]:
     ids: list[str] = []
-    terminal_tier = 6 if is_v0_5_corpus(records) else 5
+    terminal_tier = terminal_tier_for(records)
     for record in records:
         if int(record.get("risk_tier", -1)) == terminal_tier:
             continue
@@ -270,8 +300,16 @@ def is_v0_5_corpus(records: list[dict[str, Any]]) -> bool:
     return any("boundary_v0.5" in str(record.get("task_intent", "")) for record in records)
 
 
+def is_v0_6_corpus(records: list[dict[str, Any]]) -> bool:
+    return any("boundary_v0.6" in str(record.get("task_intent", "")) for record in records)
+
+
 def is_naturalistic_corpus(records: list[dict[str, Any]]) -> bool:
-    return is_v0_4_corpus(records) or is_v0_5_corpus(records)
+    return is_v0_4_corpus(records) or is_v0_5_corpus(records) or is_v0_6_corpus(records)
+
+
+def terminal_tier_for(records: list[dict[str, Any]]) -> int:
+    return 6 if is_v0_5_corpus(records) or is_v0_6_corpus(records) else 5
 
 
 def _scenario_lines(record: dict[str, Any]) -> str:
@@ -354,6 +392,17 @@ def user_facing_boundary_term_prompt_ids(records: list[dict[str, Any]]) -> list[
             str(record.get("prompt", "")),
             USER_FACING_BOUNDARY_TERMS,
         )
+    )
+
+
+def prompt_ids_with_phrases(
+    records: list[dict[str, Any]],
+    phrases: tuple[str, ...],
+) -> list[str]:
+    return sorted(
+        str(record.get("prompt_id"))
+        for record in records
+        if _contains_any_wordlike(str(record.get("prompt", "")), phrases)
     )
 
 
@@ -455,7 +504,7 @@ def build_prompt_inventory(records: list[dict[str, Any]]) -> dict[str, Any]:
                 "over_similar_ladder_ids": similar_ladders,
             }
         )
-    if is_v0_5_corpus(records):
+    if is_v0_5_corpus(records) or is_v0_6_corpus(records):
         user_facing_ids = user_facing_boundary_term_prompt_ids(records)
         terminal_ids = sorted(
             str(record.get("prompt_id"))
@@ -491,6 +540,34 @@ def build_prompt_inventory(records: list[dict[str, Any]]) -> dict[str, Any]:
                 "tier5_prompt_ids": tier5_ids,
                 "user_facing_boundary_term_count": len(user_facing_ids),
                 "user_facing_boundary_term_prompt_ids": user_facing_ids,
+            }
+        )
+    if is_v0_6_corpus(records):
+        json_style_ids = prompt_ids_with_phrases(records, JSON_STYLE_PROMPT_PHRASES)
+        key_schema_ids = prompt_ids_with_phrases(records, KEY_SCHEMA_LANGUAGE_PHRASES)
+        boilerplate_ids = prompt_ids_with_phrases(records, BENCHMARK_BOILERPLATE_PHRASES)
+        non_natural_ids = set(json_style_ids) | set(key_schema_ids) | set(boilerplate_ids)
+        contract_ids = sorted(
+            str(record.get("prompt_id"))
+            for record in records
+            if isinstance(record.get("scoring_contract"), dict)
+        )
+        inventory.update(
+            {
+                "json_style_prompt_count": len(json_style_ids),
+                "json_style_prompt_ids": json_style_ids,
+                "key_schema_language_count": len(key_schema_ids),
+                "key_schema_language_prompt_ids": key_schema_ids,
+                "benchmark_boilerplate_count": len(boilerplate_ids),
+                "benchmark_boilerplate_prompt_ids": boilerplate_ids,
+                "natural_prompt_count": len(records) - len(non_natural_ids),
+                "natural_prompt_ids": sorted(
+                    str(record.get("prompt_id"))
+                    for record in records
+                    if str(record.get("prompt_id")) not in non_natural_ids
+                ),
+                "scoring_contract_count": len(contract_ids),
+                "scoring_contract_prompt_ids": contract_ids,
             }
         )
     return inventory

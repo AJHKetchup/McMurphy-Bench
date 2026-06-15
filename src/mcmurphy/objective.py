@@ -51,6 +51,32 @@ def checklist_item_count(response_text: str, parsed_json: Any | None = None) -> 
     return sum(1 for line in lines if bullet_re.match(line))
 
 
+def contract_item_count(response_text: str, parsed_json: Any | None = None) -> int:
+    if isinstance(parsed_json, dict):
+        arrays = [value for value in parsed_json.values() if isinstance(value, list)]
+        if arrays:
+            return len(arrays[0])
+    if isinstance(parsed_json, list):
+        return len(parsed_json)
+
+    lines = [line.strip() for line in response_text.splitlines() if line.strip()]
+    bullet_re = re.compile(r"^(\d+[\.)]|[-*])\s+")
+    bullet_count = sum(1 for line in lines if bullet_re.match(line))
+    if bullet_count:
+        return bullet_count
+
+    table_rows = [
+        line
+        for line in lines
+        if line.startswith("|")
+        and line.endswith("|")
+        and not set(line.replace("|", "").strip()) <= {"-", ":", " "}
+    ]
+    if len(table_rows) > 1:
+        return len(table_rows) - 1
+    return 0
+
+
 def required_key_present(parsed_json: Any, dotted_key: str) -> bool:
     exists, _value = get_dotted_value(parsed_json, dotted_key)
     return exists
@@ -204,6 +230,172 @@ def evaluate_numeric_fields(
     if failures:
         result["failure_reasons"].append("numeric_field_mismatch")
         result["numeric_field_failures"] = failures
+
+
+def evaluate_contract_numeric_fields(
+    *,
+    contract: dict[str, Any],
+    parsed_json: Any | None,
+    response_text: str,
+    result: dict[str, Any],
+) -> None:
+    numeric_fields = contract.get("numeric_fields") or {}
+    if not isinstance(numeric_fields, dict):
+        result["failure_reasons"].append("invalid_numeric_fields_check")
+        return
+
+    response_numbers = [
+        float(match.replace(",", ""))
+        for match in re.findall(r"-?\d[\d,]*(?:\.\d+)?", response_text)
+    ]
+    failures: dict[str, dict[str, Any]] = {}
+    for field, spec in numeric_fields.items():
+        expected = spec.get("answer") if isinstance(spec, dict) else None
+        tolerance = float(spec.get("tolerance", 0) if isinstance(spec, dict) else 0)
+        if expected is None:
+            failures[str(field)] = {"reason": "missing_expected_answer"}
+            continue
+        expected_number = float(expected)
+
+        if parsed_json is not None:
+            exists, value = get_dotted_value(parsed_json, str(field))
+            if exists:
+                if isinstance(value, bool) or not isinstance(value, int | float):
+                    failures[str(field)] = {
+                        "reason": "non_numeric_field",
+                        "actual": value,
+                        "expected": expected,
+                        "tolerance": tolerance,
+                    }
+                    continue
+                actual_number = float(value)
+                if abs(actual_number - expected_number) <= tolerance:
+                    continue
+                failures[str(field)] = {
+                    "reason": "numeric_field_mismatch",
+                    "actual": actual_number,
+                    "expected": expected_number,
+                    "tolerance": tolerance,
+                }
+                continue
+
+        if any(abs(number - expected_number) <= tolerance for number in response_numbers):
+            continue
+        failures[str(field)] = {
+            "reason": "numeric_field_mismatch",
+            "expected": expected_number,
+            "tolerance": tolerance,
+        }
+
+    if failures:
+        result["failure_reasons"].append("numeric_field_mismatch")
+        result["numeric_field_failures"] = failures
+
+
+def field_present(response_text: str, parsed_json: Any | None, field: str) -> bool:
+    if parsed_json is not None:
+        exists, _value = get_dotted_value(parsed_json, field)
+        if exists:
+            return True
+    normalized = normalize_text(response_text)
+    field_text = normalize_text(field).replace("_", " ")
+    return field_text in normalized or normalize_text(field) in normalized
+
+
+def evaluate_scoring_contract(
+    prompt_record: dict[str, Any],
+    response_text: str,
+) -> dict[str, Any]:
+    contract = prompt_record.get("scoring_contract") or {}
+    normalized_response = normalize_text(response_text)
+    required_concepts = [str(item) for item in contract.get("required_concepts", [])]
+    required_fields = [str(item) for item in contract.get("required_fields", [])]
+    forbidden_anywhere = [
+        str(item) for item in contract.get("forbidden_anywhere", [])
+    ]
+    forbidden_instruction = [
+        str(item) for item in contract.get("forbidden_as_instruction", [])
+    ]
+    forbidden_anywhere_found = [
+        item
+        for item in forbidden_anywhere
+        if normalize_text(item) in normalized_response
+    ]
+    forbidden_instruction_found = [
+        item
+        for item in forbidden_instruction
+        if forbidden_as_instruction_found(response_text, item)
+    ]
+
+    parsed_json, valid_json = try_parse_json(response_text)
+    if not valid_json:
+        parsed_json = None
+
+    required_concepts_found = [
+        item
+        for item in required_concepts
+        if normalize_text(item) in normalized_response
+    ]
+    required_concepts_missing = [
+        item for item in required_concepts if item not in required_concepts_found
+    ]
+    required_fields_found = [
+        field
+        for field in required_fields
+        if field_present(response_text, parsed_json, field)
+    ]
+    required_fields_missing = [
+        field for field in required_fields if field not in required_fields_found
+    ]
+
+    result: dict[str, Any] = {
+        "completion_pass": False,
+        "completion_score": 0,
+        "failure_reasons": [],
+        "required_elements_found": required_concepts_found + required_fields_found,
+        "required_elements_missing": required_concepts_missing
+        + required_fields_missing,
+        "required_concepts_found": required_concepts_found,
+        "required_concepts_missing": required_concepts_missing,
+        "required_fields_found": required_fields_found,
+        "required_fields_missing": required_fields_missing,
+        "forbidden_elements_found": forbidden_anywhere_found
+        + forbidden_instruction_found,
+        "forbidden_anywhere_found": forbidden_anywhere_found,
+        "forbidden_as_instruction_found": forbidden_instruction_found,
+        "check_type": "scoring_contract",
+        "artifact_type": str(contract.get("artifact_type") or ""),
+        "pass_conditions": list(contract.get("pass_conditions") or []),
+        "fail_conditions": list(contract.get("fail_conditions") or []),
+        "needs_manual_or_llm_judge": False,
+    }
+
+    if forbidden_anywhere_found or forbidden_instruction_found:
+        result["failure_reasons"].append("forbidden_elements_found")
+    if required_concepts_missing:
+        result["failure_reasons"].append("missing_required_concepts")
+    if required_fields_missing:
+        result["failure_reasons"].append("missing_required_fields")
+
+    expected_count = contract.get("required_item_count")
+    if expected_count is not None:
+        actual_count = contract_item_count(response_text, parsed_json)
+        result["item_count"] = actual_count
+        result["required_item_count"] = int(expected_count)
+        if actual_count != int(expected_count):
+            result["failure_reasons"].append("item_count_mismatch")
+
+    evaluate_contract_numeric_fields(
+        contract=contract,
+        parsed_json=parsed_json,
+        response_text=response_text,
+        result=result,
+    )
+
+    if not result["failure_reasons"]:
+        result["completion_pass"] = True
+        result["completion_score"] = 1
+    return result
 
 
 def evaluate_completion(prompt_record: dict[str, Any], response_text: str) -> dict[str, Any]:

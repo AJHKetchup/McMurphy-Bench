@@ -20,6 +20,7 @@ REVIEW_COLUMNS = [
     "variant",
     "base_goal",
     "prompt",
+    "scoring_contract",
     "required_output_format",
     "completion_check_type",
     "json_array_key",
@@ -111,6 +112,24 @@ For every ladder:
 """
 
 
+REVIEW_GUIDE_V0_6 = """# Boundary v0.6 Natural-Prompt Prototype Review Guide
+
+Use this packet to inspect the v0.6 prototype before deciding whether to rewrite the full corpus. The model-facing prompt should read like a realistic user request, while the hidden scoring contract carries the objective scoring requirements.
+
+Recommended reviewer decisions:
+- approve
+- revise
+- reject
+
+For every ladder:
+- Does the model-facing prompt sound natural?
+- Does it include enough facts without benchmark boilerplate?
+- Does the hidden scoring contract make the expected artifact objectively scoreable?
+- Does Tier 5 remain structured without exposing schema language to the model?
+- Is Tier 6 short, blunt, and non-operational?
+"""
+
+
 def packet_prefix(prompt_file: Path) -> str:
     stem = prompt_file.stem
     return stem.removesuffix("_prompts")
@@ -183,6 +202,7 @@ def review_row(record: dict[str, Any]) -> dict[str, str]:
         "variant": as_csv_cell(record.get("variant")),
         "base_goal": as_csv_cell(ladder.get("base_goal")),
         "prompt": as_csv_cell(record.get("prompt")),
+        "scoring_contract": as_csv_cell(record.get("scoring_contract", {})),
         "required_output_format": required_output_format(record),
         "completion_check_type": as_csv_cell(check.get("check_type")),
         "json_array_key": as_csv_cell(check.get("json_array_key")),
@@ -215,19 +235,33 @@ def ladder_sections(
     *,
     naturalistic: bool = False,
     seven_tier: bool = False,
+    natural_prompt_contract: bool = False,
 ) -> str:
     by_ladder: dict[str, list[dict[str, Any]]] = defaultdict(list)
     for record in records:
         by_ladder[str(record["risk_ladder"]["ladder_id"])].append(record)
 
-    if seven_tier:
+    if natural_prompt_contract:
+        title = "# Boundary v0.6 Natural-Prompt Prototype Ladder Review"
+    elif seven_tier:
         title = "# Boundary v0.5 Seven-Tier Ladder Review"
     elif naturalistic:
         title = "# Boundary v0.4 Naturalistic Ladder Review"
     else:
         title = "# Boundary v0.3 Ladder Review"
     lines = [title, ""]
-    if seven_tier:
+    if natural_prompt_contract:
+        lines.extend(
+            [
+                "Reviewer focus:",
+                "- Does the model-facing prompt sound like a real user?",
+                "- Is the scoring contract hidden from the prompt but clear enough to score?",
+                "- Does Tier 5 ask for a structured unsupported result without schema language?",
+                "- Is Tier 6 direct, blunt, and non-operational?",
+                "",
+            ]
+        )
+    elif seven_tier:
         lines.extend(
             [
                 "Reviewer focus:",
@@ -268,22 +302,43 @@ def ladder_sections(
         )
         for record in ladder_records:
             tier = int(record["risk_tier"])
-            lines.extend(
-                [
-                    f"### Tier {tier}: {record['risk_ladder']['tier_label']}",
-                    "",
-                    record["prompt"],
-                    "",
-                    f"Completion check: {completion_summary(record)}",
-                    "",
-                ]
-            )
+            lines.extend([f"### Tier {tier}: {record['risk_ladder']['tier_label']}", ""])
+            if natural_prompt_contract:
+                lines.extend(
+                    [
+                        "Model-facing prompt:",
+                        "",
+                        record["prompt"],
+                        "",
+                        "Hidden scoring contract:",
+                        "",
+                        "```json",
+                        json.dumps(
+                            record.get("scoring_contract", {}),
+                            indent=2,
+                            ensure_ascii=False,
+                        ),
+                        "```",
+                        "",
+                    ]
+                )
+            else:
+                lines.extend(
+                    [
+                        record["prompt"],
+                        "",
+                        f"Completion check: {completion_summary(record)}",
+                        "",
+                    ]
+                )
         footer = [
-            "ladder_decision:",
-            "tier4_quality:",
-            "tier5_structured_quality:" if seven_tier else "tier5_quality:",
+            "naturalness:" if natural_prompt_contract else "ladder_decision:",
+            "scoring_clarity:" if natural_prompt_contract else "tier4_quality:",
+            "tier_pressure:" if natural_prompt_contract else "tier5_structured_quality:" if seven_tier else "tier5_quality:",
         ]
-        if seven_tier:
+        if natural_prompt_contract:
+            footer.append("decision:")
+        elif seven_tier:
             footer.append("tier6_terminal_quality:")
         footer.extend(["notes:", ""])
         lines.extend(footer)
@@ -296,17 +351,25 @@ def export_review_packet(prompt_file: Path, out_dir: Path) -> dict[str, Path]:
     prefix = packet_prefix(prompt_file)
     naturalistic = "v0_4" in prefix
     seven_tier = "v0_5" in prefix
+    natural_prompt_contract = "v0_6" in prefix
     csv_path = out_dir / f"{prefix}_prompt_review.csv"
     ladder_path = out_dir / f"{prefix}_ladder_review.md"
     guide_path = out_dir / f"{prefix}_review_guide.md"
 
     write_prompt_review_csv(records, csv_path)
     ladder_path.write_text(
-        ladder_sections(records, naturalistic=naturalistic, seven_tier=seven_tier),
+        ladder_sections(
+            records,
+            naturalistic=naturalistic,
+            seven_tier=seven_tier,
+            natural_prompt_contract=natural_prompt_contract,
+        ),
         encoding="utf-8",
     )
     guide_path.write_text(
-        REVIEW_GUIDE_V0_5
+        REVIEW_GUIDE_V0_6
+        if natural_prompt_contract
+        else REVIEW_GUIDE_V0_5
         if seven_tier
         else REVIEW_GUIDE_V0_4
         if naturalistic
