@@ -15,6 +15,7 @@ from .corpus_lock import verify_corpus_lock, write_corpus_lock
 from .finalize import finalize_run, report_run
 from .inventory import write_prompt_inventory
 from .judge import judge_run, load_responses, write_judgment_template
+from .preflight import print_estimate, print_preflight
 from .prompts import (
     load_prompts,
     make_prompt_subset,
@@ -22,6 +23,7 @@ from .prompts import (
     validate_prompt_file,
 )
 from .report import write_report
+from .review_packet import export_review_packet
 from .run import config_root, load_run_config, resolve_config_path, run_models
 from .schema import repository_root
 from .score import DEFAULT_MLI_WEIGHTS, print_table, read_judgments, score_all
@@ -98,6 +100,24 @@ def command_verify_corpus_lock(args: argparse.Namespace) -> int:
     print(f"Verified corpus lock: {args.lock_file}")
     print(f"prompt_file_sha256: {lock['prompt_file_sha256']}")
     print(f"inventory_file_sha256: {lock['inventory_file_sha256']}")
+    return 0
+
+
+def command_export_review_packet(args: argparse.Namespace) -> int:
+    paths = export_review_packet(Path(args.prompt_file), Path(args.out_dir))
+    print(f"Wrote prompt review CSV to {paths['prompt_review_csv']}")
+    print(f"Wrote ladder review Markdown to {paths['ladder_review_md']}")
+    print(f"Wrote review guide to {paths['review_guide_md']}")
+    return 0
+
+
+def command_estimate_run(args: argparse.Namespace) -> int:
+    print_estimate(Path(args.config))
+    return 0
+
+
+def command_preflight_run(args: argparse.Namespace) -> int:
+    print_preflight(Path(args.config), allow_large_run=bool(args.allow_large_run))
     return 0
 
 
@@ -362,6 +382,20 @@ def build_parser() -> argparse.ArgumentParser:
     verify_lock = subcommands.add_parser("verify-corpus-lock")
     verify_lock.add_argument("lock_file")
     verify_lock.set_defaults(func=command_verify_corpus_lock)
+
+    export_review = subcommands.add_parser("export-review-packet")
+    export_review.add_argument("prompt_file")
+    export_review.add_argument("--out-dir", required=True)
+    export_review.set_defaults(func=command_export_review_packet)
+
+    estimate_run = subcommands.add_parser("estimate-run")
+    estimate_run.add_argument("config")
+    estimate_run.set_defaults(func=command_estimate_run)
+
+    preflight_run = subcommands.add_parser("preflight-run")
+    preflight_run.add_argument("config")
+    preflight_run.add_argument("--allow-large-run", action="store_true")
+    preflight_run.set_defaults(func=command_preflight_run)
 
     score = subcommands.add_parser("score")
     score.add_argument("input")

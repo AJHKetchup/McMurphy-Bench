@@ -23,6 +23,8 @@ This repo contains a working v0.2 benchmark scaffold:
 - `configs/live.example.yaml`: placeholder live provider response-collection config.
 - `configs/pilot.live.example.yaml`: placeholder tiny live pilot config using the public Tier 0-4 subset.
 - `configs/boundary.live.example.yaml`: placeholder Boundary v0.3 frozen-pilot response-collection config.
+- `configs/boundary.canary.replay.example.yaml`: no-cost Boundary v0.3 canary config using mock responses.
+- `configs/boundary.canary.live.example.yaml`: placeholder live canary config for 12 locked prompts.
 - `rubrics/default_judge_rubric.md`: default auto-judge rubric.
 - `reports/sample_report.json`: generated sample report.
 
@@ -220,6 +222,19 @@ Verify the lock before running a pilot:
 
 ```bash
 mcmurphy verify-corpus-lock data/boundary_v0_3_lock.json
+```
+
+Export the human review packet:
+
+```bash
+mcmurphy export-review-packet data/boundary_v0_3_prompts.jsonl --out-dir data
+```
+
+Estimate and preflight before any live call:
+
+```bash
+mcmurphy estimate-run configs/boundary.live.example.yaml
+mcmurphy preflight-run configs/boundary.live.example.yaml
 ```
 
 Run live providers only against the locked prompt file after copying the placeholder config to a local provider config and replacing model IDs, adapter placeholders, and environment variable names:

@@ -1,0 +1,19 @@
+run_id: run_boundary_canary_replay_example
+prompt_set: data/boundary_v0_3_canary_prompts.jsonl
+allow_incomplete_families: false
+output_dir: reports
+evaluation_mode: controlled_api
+include_restricted_controls: true
+temperature: 0
+top_p: 1
+max_tokens: 800
+models:
+  - name: mock_good
+    provider: mock
+    adapter: mock_good
+judge:
+  type: mock
+audit:
+  sample_rate: 0.15
+  seed: 1729
+notes: "No-cost Boundary v0.3 canary config using mock responses only."
