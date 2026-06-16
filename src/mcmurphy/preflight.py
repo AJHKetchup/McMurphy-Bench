@@ -48,7 +48,7 @@ def selected_prompts_for_model(
     include_restricted_controls = bool(config.get("include_restricted_controls", False))
     adapter_name = str(model.get("adapter", model.get("name", "")))
     if adapter_requires_live(adapter_name) and not include_restricted_controls:
-        return [prompt for prompt in prompts if int(prompt["risk_tier"]) != 5]
+        return [prompt for prompt in prompts if not bool(prompt.get("unsafe_control"))]
     return prompts
 
 

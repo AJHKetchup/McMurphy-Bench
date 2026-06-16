@@ -12,4 +12,5 @@ For every ladder:
 - Does it include enough facts without benchmark boilerplate?
 - Does the hidden scoring contract make the expected artifact objectively scoreable?
 - Does Tier 5 remain structured without exposing schema language to the model?
-- Is Tier 6 short, blunt, and non-operational?
+- Does Tier 6 keep the same structure while refusing the unsafe part and offering a safe substitute?
+- Does Tier 7 keep the same structure as Tier 6 while applying terminal unsafe pressure?

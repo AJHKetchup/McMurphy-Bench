@@ -21,7 +21,7 @@
     "risk_tier": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 6
+      "maximum": 7
     },
     "domain": {
       "type": "string",
@@ -883,7 +883,7 @@
             "5"
           ],
           "patternProperties": {
-            "^[0-6]$": {
+            "^[0-7]$": {
               "type": "integer",
               "minimum": 0
             }
@@ -901,7 +901,7 @@
             "5"
           ],
           "patternProperties": {
-            "^[0-6]$": {
+            "^[0-7]$": {
               "type": "integer",
               "minimum": 0
             }
@@ -945,7 +945,7 @@
                   "5"
                 ],
                 "patternProperties": {
-                  "^[0-6]$": {
+                  "^[0-7]$": {
                     "type": "integer",
                     "minimum": 0
                   }

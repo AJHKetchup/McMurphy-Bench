@@ -174,6 +174,19 @@ def is_boundary_v0_6_record(record: dict[str, Any]) -> bool:
     return "boundary_v0.6" in str(record.get("task_intent", ""))
 
 
+def is_boundary_v0_6_clarity_record(record: dict[str, Any]) -> bool:
+    return "boundary_v0.6 clarity" in str(record.get("task_intent", ""))
+
+
+def expected_family_tiers(tiers: set[int]) -> set[int]:
+    max_tier = max(tiers)
+    if max_tier >= 7:
+        return set(range(8))
+    if max_tier == 6:
+        return set(range(7))
+    return set(range(6))
+
+
 def prompt_phrase_present(text: str, phrase: str) -> bool:
     if " " in phrase:
         return phrase in text
@@ -206,12 +219,17 @@ def validate_boundary_prompt(record: dict[str, Any]) -> None:
     lowered = prompt_text.lower()
     v0_5_record = is_boundary_v0_5_record(record)
     v0_6_record = is_boundary_v0_6_record(record)
-    structured_tier5 = v0_5_record or v0_6_record
+    v0_6_clarity_record = is_boundary_v0_6_clarity_record(record)
+    structured_tier5 = v0_5_record or (v0_6_record and not v0_6_clarity_record)
 
     if int(risk_ladder["tier"]) != tier:
         raise ValueError(f"{prompt_id}: risk_ladder.tier must equal risk_tier")
 
-    if tier in {0, 1, 2, 3, 4} or (structured_tier5 and tier == 5):
+    if (
+        tier in {0, 1, 2, 3, 4}
+        or (structured_tier5 and tier == 5)
+        or (v0_6_clarity_record and tier in {5, 6, 7})
+    ):
         validate_structured_boundary_tier(record, tier)
 
     if (v0_5_record or v0_6_record) and tier <= 5:
@@ -240,7 +258,7 @@ def validate_boundary_prompt(record: dict[str, Any]) -> None:
                     f"{prompt_id}: Tier 5 public prompt must be non-operational; found {phrase!r}"
                 )
 
-    if tier == 5 and not structured_tier5:
+    if tier == 5 and not structured_tier5 and not v0_6_clarity_record:
         if not record.get("unsafe_control"):
             raise ValueError(f"{prompt_id}: Tier 5 boundary prompt must set unsafe_control=true")
         if not any(term in lowered for term in TIER5_EXPLICIT_INTENT_TERMS):
@@ -253,7 +271,7 @@ def validate_boundary_prompt(record: dict[str, Any]) -> None:
                     f"{prompt_id}: Tier 5 public prompt must be non-operational; found {phrase!r}"
                 )
 
-    if tier == 6:
+    if tier == 6 and not v0_6_clarity_record:
         if not record.get("unsafe_control"):
             raise ValueError(f"{prompt_id}: Tier 6 boundary prompt must set unsafe_control=true")
         check = record.get("completion_check") or {}
@@ -266,6 +284,15 @@ def validate_boundary_prompt(record: dict[str, Any]) -> None:
                 raise ValueError(
                     f"{prompt_id}: Tier 6 public prompt must be non-operational; found {phrase!r}"
                 )
+
+    if v0_6_clarity_record and tier in {6, 7}:
+        if not record.get("unsafe_control"):
+            raise ValueError(f"{prompt_id}: Tier {tier} boundary prompt must set unsafe_control=true")
+        check = record.get("completion_check") or {}
+        if check.get("check_type") != "json_schema":
+            raise ValueError(
+                f"{prompt_id}: Tier {tier} clarity prompt must keep structured json_schema completion_check"
+            )
 
 
 def validate_prompt_records(
@@ -324,12 +351,12 @@ def validate_prompt_records(
 
         validate_boundary_prompt(record)
 
-        if record["risk_tier"] in {0, 1, 2, 3, 4, 5} and not record.get(
-            "expected_behavior"
-        ):
+        if not record.get("expected_behavior"):
             raise ValueError(f"{prompt_id}: answerable tier missing expected_behavior")
 
-        if record["risk_tier"] in {5, 6}:
+        clarity_record = is_boundary_v0_6_clarity_record(record)
+        restricted_tiers = {6, 7} if clarity_record else {5, 6}
+        if record["risk_tier"] in restricted_tiers:
             tier = int(record["risk_tier"])
             if record.get("release") != "restricted":
                 raise ValueError(f"{prompt_id}: Tier {tier} must use release=restricted")
@@ -356,7 +383,7 @@ def validate_prompt_records(
 
     for family_id, family_records in by_family.items():
         tiers = {record["risk_tier"] for record in family_records}
-        expected_tiers = set(range(7)) if max(tiers) == 6 else set(range(6))
+        expected_tiers = expected_family_tiers(set(int(tier) for tier in tiers))
         if not allow_incomplete_families and tiers != expected_tiers:
             raise ValueError(
                 f"{family_id}: expected tiers {min(expected_tiers)}-{max(expected_tiers)}, found {sorted(tiers)}"
@@ -371,7 +398,7 @@ def validate_prompt_records(
         if len(base_goals) != 1:
             raise ValueError(f"{ladder_id}: all records must share risk_ladder.base_goal")
         tiers = {int(record["risk_tier"]) for record in ladder_records}
-        expected_tiers = set(range(7)) if max(tiers) == 6 else set(range(6))
+        expected_tiers = expected_family_tiers(tiers)
         if not allow_incomplete_families and tiers != expected_tiers:
             raise ValueError(
                 f"{ladder_id}: expected tiers {min(expected_tiers)}-{max(expected_tiers)}, found {sorted(tiers)}"
@@ -412,8 +439,8 @@ def parse_tier_list(value: str) -> tuple[int, ...]:
         if not item:
             continue
         tier = int(item)
-        if tier < 0 or tier > 6:
-            raise ValueError(f"Tier must be between 0 and 6: {tier}")
+        if tier < 0 or tier > 7:
+            raise ValueError(f"Tier must be between 0 and 7: {tier}")
         if tier not in tiers:
             tiers.append(tier)
     if not tiers:
