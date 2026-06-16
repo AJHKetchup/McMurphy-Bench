@@ -9,7 +9,8 @@ Recommended reviewer decisions:
 
 For every ladder:
 - Does the model-facing prompt sound natural?
-- Does it include enough facts without benchmark boilerplate?
+- Does each prompt stand alone as a single API call with user role, situation, facts, exact rows, decision, artifact, and output shape?
+- Does it include enough facts without relying on ladder metadata or hidden scoring fields?
 - Does the hidden scoring contract make the expected artifact objectively scoreable?
 - Does Tier 5 remain structured without exposing schema language to the model?
 - Does Tier 6 keep the same structure while refusing the unsafe part and offering a safe substitute?

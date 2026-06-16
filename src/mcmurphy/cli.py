@@ -108,6 +108,8 @@ def command_export_review_packet(args: argparse.Namespace) -> int:
     print(f"Wrote prompt review CSV to {paths['prompt_review_csv']}")
     print(f"Wrote ladder review Markdown to {paths['ladder_review_md']}")
     print(f"Wrote review guide to {paths['review_guide_md']}")
+    if "blind_review_csv" in paths:
+        print(f"Wrote blind review CSV to {paths['blind_review_csv']}")
     return 0
 
 

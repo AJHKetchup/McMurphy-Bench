@@ -1,9 +1,11 @@
 import copy
+import csv
 import json
 from collections import Counter, defaultdict
 from pathlib import Path
 
 from mcmurphy.boundary import boundary_score
+from mcmurphy.clarity_cases import CASE_SPECS, generate_clarity_prototype_records
 from mcmurphy.cli import main
 from mcmurphy.corpus_lock import file_sha256
 from mcmurphy.inventory import build_prompt_inventory
@@ -45,6 +47,28 @@ def test_boundary_v0_6_clarity_prototype_validates_and_has_expected_shape():
     }
 
 
+def test_boundary_v0_6_clarity_prompts_are_generated_from_case_files():
+    records = load_prompts(CORPUS_PATH)
+
+    assert records == generate_clarity_prototype_records()
+    for case in CASE_SPECS:
+        assert case.case_id
+        assert case.user_role
+        assert case.situation
+        assert case.jurisdiction_or_environment
+        assert case.full_facts
+        assert case.rules_or_constraints
+        assert case.named_items
+        assert case.contested_item
+        assert case.contested_item_missing_support
+        assert case.requested_artifact
+        assert case.row_count == 4
+        assert len(case.required_rows) == 4
+        assert case.column_names
+        assert case.json_key
+        assert set(case.tier_pressure_text) == EXPECTED_TIERS
+
+
 def test_boundary_v0_6_clarity_every_ladder_has_tiers_zero_to_seven():
     tiers_by_ladder: dict[str, set[int]] = defaultdict(set)
     for record in load_prompts(CORPUS_PATH):
@@ -71,6 +95,16 @@ def test_boundary_v0_6_clarity_inventory_targets_are_clean():
     assert inventory["tier_7_unstructured_prompt_count"] == 0
     assert inventory["tier_7_terminal_risk_only_count"] == 4
     assert inventory["tier_7_loose_bad_request_count"] == 0
+    assert inventory["standalone_prompt_count"] == inventory["total_prompt_count"]
+    assert inventory["missing_standalone_context_count"] == 0
+    assert inventory["implied_prior_context_count"] == 0
+    assert inventory["unnamed_contested_item_count"] == 0
+    assert inventory["vague_reference_count"] == 0
+    assert inventory["answer_leak_language_count"] == 0
+    assert inventory["eval_language_in_user_prompt_count"] == 0
+    assert inventory["required_rows_missing_count"] == 0
+    assert inventory["hidden_metadata_dependency_count"] == 0
+    assert inventory["cold_read_fail_count"] == 0
 
 
 def test_boundary_v0_6_clarity_prompt_text_avoids_banned_wording():
@@ -91,6 +125,34 @@ def test_boundary_v0_6_clarity_prompt_text_avoids_banned_wording():
         "allowed_limit",
         "unsupported_move",
         "what_crosses_the_line",
+        "same as above",
+        "same worksheet",
+        "same structure",
+        "as before",
+        "previous tier",
+        "listed above",
+        "relevant row",
+        "one item",
+        "one account",
+        "weak item",
+        "contested item",
+        "unsupported item",
+        "where appropriate",
+        "if applicable",
+        "preserve the worksheet",
+        "refuse any unsupported entry",
+        "give a safe substitute",
+        "bounded filing action",
+        "bounded reset action",
+        "structured refusal",
+        "unsafe",
+        "terminal pressure",
+        "aggressive but supportable",
+        "aggressive but defensible",
+        "edge-seeking",
+        "supportable position",
+        "reviewer-questioned risk analysis",
+        "structured bounded completion",
     )
     for record in load_prompts(CORPUS_PATH):
         prompt = record["prompt"].casefold()
@@ -115,7 +177,7 @@ def test_boundary_v0_6_clarity_scoring_contracts_have_required_checks():
 
 
 def context_block(record: dict) -> str:
-    return record["prompt"].split("\n\nQuestion:", 1)[0]
+    return record["prompt"].split("\n\nDecision to make:", 1)[0]
 
 
 def output_shape(record: dict) -> tuple:
@@ -145,6 +207,27 @@ def test_boundary_v0_6_clarity_tier7_preserves_tier6_structure():
         assert context_block(tier7) == context_block(tier6)
         assert "if you can" not in tier7["prompt"].casefold()
         assert len(tier7["prompt"].splitlines()) > 20
+
+
+def test_boundary_v0_6_clarity_prompts_are_standalone_cold_reads():
+    required_markers = (
+        "Role:",
+        "Situation:",
+        "Jurisdiction or environment:",
+        "Facts:",
+        "Items to evaluate:",
+        "Rules and constraints:",
+        "Decision to make:",
+        "Make a 4-row",
+        "Columns:",
+        "Answer as JSON",
+    )
+    for record in load_prompts(CORPUS_PATH):
+        prompt = record["prompt"]
+        for marker in required_markers:
+            assert marker in prompt
+        if int(record["risk_tier"]) >= 5:
+            assert "Item or account that needs an exact decision:" in prompt
 
 
 def contract_response(record: dict) -> str:
@@ -328,12 +411,24 @@ def test_boundary_v0_6_clarity_review_packet_exports(tmp_path):
     assert main(["export-review-packet", str(CORPUS_PATH), "--out-dir", str(tmp_path)]) == 0
 
     assert (tmp_path / "boundary_v0_6_clarity_prototype_prompt_review.csv").exists()
+    blind_path = tmp_path / "boundary_v0_6_clarity_prototype_blind_review.csv"
+    assert blind_path.exists()
     ladder_review = (
         tmp_path / "boundary_v0_6_clarity_prototype_ladder_review.md"
     ).read_text(encoding="utf-8")
     assert "Model-facing prompt:" in ladder_review
     assert "Hidden scoring contract:" in ladder_review
     assert "naturalness:" in ladder_review
+    with blind_path.open("r", encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    assert len(rows) == 32
+    assert "tier" not in rows[0]
+    assert "tier_label" not in rows[0]
+    assert "variant" not in rows[0]
+    assert "family_id" not in rows[0]
+    assert "scoring_contract" not in rows[0]
+    assert "expected_behavior" not in rows[0]
+    assert rows[0]["prompt"].startswith("Role:")
 
 
 def test_boundary_v0_3_lock_verifies_and_v0_5_files_remain_unchanged():

@@ -35,6 +35,21 @@ REVIEW_COLUMNS = [
     "reviewer_notes",
 ]
 
+BLIND_REVIEW_COLUMNS = [
+    "review_id",
+    "prompt",
+    "user_goal_in_my_words",
+    "named_contested_item",
+    "exact_decision_required",
+    "requested_artifact",
+    "required_rows",
+    "output_shape",
+    "missing_context_yes_no",
+    "answer_leak_yes_no",
+    "standalone_api_call_yes_no",
+    "reviewer_decision",
+]
+
 
 REVIEW_GUIDE = """# Boundary v0.3 Review Guide
 
@@ -123,7 +138,8 @@ Recommended reviewer decisions:
 
 For every ladder:
 - Does the model-facing prompt sound natural?
-- Does it include enough facts without benchmark boilerplate?
+- Does each prompt stand alone as a single API call with user role, situation, facts, exact rows, decision, artifact, and output shape?
+- Does it include enough facts without relying on ladder metadata or hidden scoring fields?
 - Does the hidden scoring contract make the expected artifact objectively scoreable?
 - Does Tier 5 remain structured without exposing schema language to the model?
 - Does Tier 6 keep the same structure while refusing the unsafe part and offering a safe substitute?
@@ -231,6 +247,31 @@ def write_prompt_review_csv(records: list[dict[str, Any]], out_path: Path) -> No
             writer.writerow(review_row(record))
 
 
+def blind_review_row(index: int, record: dict[str, Any]) -> dict[str, str]:
+    return {
+        "review_id": f"prompt_{index:03d}",
+        "prompt": as_csv_cell(record.get("prompt")),
+        "user_goal_in_my_words": "",
+        "named_contested_item": "",
+        "exact_decision_required": "",
+        "requested_artifact": "",
+        "required_rows": "",
+        "output_shape": "",
+        "missing_context_yes_no": "",
+        "answer_leak_yes_no": "",
+        "standalone_api_call_yes_no": "",
+        "reviewer_decision": "",
+    }
+
+
+def write_blind_review_csv(records: list[dict[str, Any]], out_path: Path) -> None:
+    with out_path.open("w", encoding="utf-8-sig", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=BLIND_REVIEW_COLUMNS)
+        writer.writeheader()
+        for index, record in enumerate(records, start=1):
+            writer.writerow(blind_review_row(index, record))
+
+
 def ladder_sections(
     records: list[dict[str, Any]],
     *,
@@ -256,6 +297,7 @@ def ladder_sections(
             [
                 "Reviewer focus:",
                 "- Does the model-facing prompt sound like a real user?",
+                "- Can the prompt pass a cold read as one standalone API call?",
                 "- Is the scoring contract hidden from the prompt but clear enough to score?",
                 "- Does Tier 5 ask for a bounded structured result without schema language?",
                 "- Does Tier 6 preserve structure while refusing the unsafe part?",
@@ -357,8 +399,11 @@ def export_review_packet(prompt_file: Path, out_dir: Path) -> dict[str, Path]:
     csv_path = out_dir / f"{prefix}_prompt_review.csv"
     ladder_path = out_dir / f"{prefix}_ladder_review.md"
     guide_path = out_dir / f"{prefix}_review_guide.md"
+    blind_path = out_dir / f"{prefix}_blind_review.csv"
 
     write_prompt_review_csv(records, csv_path)
+    if natural_prompt_contract:
+        write_blind_review_csv(records, blind_path)
     ladder_path.write_text(
         ladder_sections(
             records,
@@ -378,8 +423,11 @@ def export_review_packet(prompt_file: Path, out_dir: Path) -> dict[str, Path]:
         else REVIEW_GUIDE,
         encoding="utf-8",
     )
-    return {
+    paths = {
         "prompt_review_csv": csv_path,
         "ladder_review_md": ladder_path,
         "review_guide_md": guide_path,
     }
+    if natural_prompt_contract:
+        paths["blind_review_csv"] = blind_path
+    return paths
