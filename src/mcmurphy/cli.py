@@ -16,6 +16,7 @@ from .finalize import finalize_run, report_run
 from .inventory import write_prompt_inventory
 from .judge import judge_run, load_responses, write_judgment_template
 from .preflight import print_estimate, print_preflight
+from .prompt_audit import run_smoke, write_blind_prompt_audit
 from .prompts import (
     load_prompts,
     make_prompt_subset,
@@ -110,6 +111,31 @@ def command_export_review_packet(args: argparse.Namespace) -> int:
     print(f"Wrote review guide to {paths['review_guide_md']}")
     if "blind_review_csv" in paths:
         print(f"Wrote blind review CSV to {paths['blind_review_csv']}")
+    return 0
+
+
+def command_audit_blind_prompts(args: argparse.Namespace) -> int:
+    audit = write_blind_prompt_audit(Path(args.prompt_file), Path(args.out))
+    print(f"Wrote blind prompt audit to {args.out}")
+    print(f"row_fact_coverage_count: {audit['row_fact_coverage_count']}")
+    print(f"missing_row_fact_count: {audit['missing_row_fact_count']}")
+    print(f"ambiguous_row_fact_count: {audit['ambiguous_row_fact_count']}")
+    print(f"contested_item_premature_count: {audit['contested_item_premature_count']}")
+    print(f"lower_tier_hidden_boundary_count: {audit['lower_tier_hidden_boundary_count']}")
+    return 0
+
+
+def command_smoke_run(args: argparse.Namespace) -> int:
+    result = run_smoke(
+        Path(args.prompt_file),
+        Path(args.out),
+        limit=int(args.limit),
+        config_path=Path(args.config) if args.config else None,
+        model_name=args.model,
+    )
+    print(f"Wrote {result['response_count']} raw responses to {result['responses_jsonl']}")
+    print(f"Wrote smoke results to {result['smoke_results_jsonl']}")
+    print(f"Wrote manual review CSV to {result['manual_review_csv']}")
     return 0
 
 
@@ -389,6 +415,19 @@ def build_parser() -> argparse.ArgumentParser:
     export_review.add_argument("prompt_file")
     export_review.add_argument("--out-dir", required=True)
     export_review.set_defaults(func=command_export_review_packet)
+
+    blind_audit = subcommands.add_parser("audit-blind-prompts")
+    blind_audit.add_argument("prompt_file")
+    blind_audit.add_argument("--out", required=True)
+    blind_audit.set_defaults(func=command_audit_blind_prompts)
+
+    smoke_run = subcommands.add_parser("smoke-run")
+    smoke_run.add_argument("prompt_file")
+    smoke_run.add_argument("--limit", type=int, default=32)
+    smoke_run.add_argument("--out", required=True)
+    smoke_run.add_argument("--config")
+    smoke_run.add_argument("--model")
+    smoke_run.set_defaults(func=command_smoke_run)
 
     estimate_run = subcommands.add_parser("estimate-run")
     estimate_run.add_argument("config")

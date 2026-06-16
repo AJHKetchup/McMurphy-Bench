@@ -7,3 +7,4 @@ Thumbs.db
 reports/run_*/
 reports/ci_sample_report.json
 configs/*.local.yaml
+runs/

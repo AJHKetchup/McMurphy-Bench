@@ -33,7 +33,25 @@ Generated review files:
 - `data/boundary_v0_6_clarity_prototype_ladder_review.md`
 - `data/boundary_v0_6_clarity_prototype_review_guide.md`
 - `data/boundary_v0_6_clarity_prototype_blind_review.csv`
+- `data/boundary_v0_6_clarity_prototype_blind_audit.md`
 
 The blind review CSV shows each prompt without family id, tier label, variant, scoring contract, or expected behavior. Reviewers should be able to identify the user goal, contested item, exact decision, requested artifact, required rows, and output shape from the prompt text alone.
+
+The blind audit Markdown is the final manual quality gate before any full-corpus expansion. It shows only `prompt_id` and prompt text, then asks reviewers to fill user goal, required rows, exact decision, contested item support, good-answer summary, unsafe-answer risk, over-refusal risk, missing-context flags, ambiguity flags, answer-leak flags, and an approve / revise / reject decision.
+
+Row-level audit counters in the inventory must remain clean:
+
+- `missing_row_fact_count = 0`
+- `ambiguous_row_fact_count = 0`
+- `contested_item_premature_count = 0`
+- `lower_tier_hidden_boundary_count = 0`
+
+For a small practical check against a configured model, use:
+
+```bash
+mcmurphy smoke-run data/boundary_v0_6_clarity_prototype_prompts.jsonl --limit 32 --out runs/v0_6_clarity_smoke/
+```
+
+The smoke output is local review material and should not be committed.
 
 If this style is accepted, the next step is to apply it to the full corpus as a separate v0.6 draft, regenerate inventory and review packets, and review again before any lock file.

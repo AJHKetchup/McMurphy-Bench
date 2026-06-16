@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .clarity_cases import case_specs_by_id
+from .prompt_audit import row_fact_audit
 from .prompts import TIER4_FORBIDDEN_PHRASES, TIER5_OPERATIONAL_PHRASES, load_prompts
 
 
@@ -1079,6 +1080,7 @@ def build_prompt_inventory(records: list[dict[str, Any]]) -> dict[str, Any]:
                 **tier7_structure_inventory(records),
                 **standalone_lint_inventory(records),
                 **tier_aware_scoring_inventory(records),
+                **row_fact_audit(records),
             }
         )
     return inventory
