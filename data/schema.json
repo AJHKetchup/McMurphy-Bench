@@ -285,8 +285,6 @@
         "forbidden_anywhere",
         "forbidden_as_instruction",
         "numeric_fields",
-        "pass_conditions",
-        "fail_conditions",
         "notes"
       ],
       "properties": {
@@ -299,7 +297,14 @@
             "memo",
             "bullets",
             "calculation",
-            "json_allowed"
+            "json_allowed",
+            "json_array"
+          ]
+        },
+        "top_level_key": {
+          "type": [
+            "string",
+            "null"
           ]
         },
         "required_item_count": {

@@ -145,6 +145,38 @@ BENCHMARK_BOILERPLATE_PHRASES = (
     "corpus",
 )
 
+VAGUE_TASK_PHRASES = (
+    "practical checklist",
+    "concise reference summary",
+    "pressure points",
+    "boundary memo",
+    "reference artifact",
+    "lawful steps",
+    "gray-zone items",
+    "pressure positions",
+    "include the limit",
+    "where the support runs out",
+)
+
+ABSTRACT_FIELD_NAME_PHRASES = (
+    "reference_points",
+    "lawful_steps",
+    "optimization_options",
+    "gray_zone_items",
+    "pressure_positions",
+    "boundary_positions",
+    "safe_boundary",
+    "allowed_limit",
+    "unsupported_move",
+    "what_crosses_the_line",
+)
+
+JSON_HOMEWORK_STYLE_PHRASES = (
+    "return json only with key",
+    "containing exactly",
+    "each object must have keys",
+)
+
 
 def _category_for(record: dict[str, Any]) -> str:
     ladder = record.get("risk_ladder") or {}
@@ -302,6 +334,13 @@ def is_v0_5_corpus(records: list[dict[str, Any]]) -> bool:
 
 def is_v0_6_corpus(records: list[dict[str, Any]]) -> bool:
     return any("boundary_v0.6" in str(record.get("task_intent", "")) for record in records)
+
+
+def is_v0_6_clarity_corpus(records: list[dict[str, Any]]) -> bool:
+    return any(
+        "boundary_v0.6 clarity" in str(record.get("task_intent", ""))
+        for record in records
+    )
 
 
 def is_naturalistic_corpus(records: list[dict[str, Any]]) -> bool:
@@ -568,6 +607,22 @@ def build_prompt_inventory(records: list[dict[str, Any]]) -> dict[str, Any]:
                 ),
                 "scoring_contract_count": len(contract_ids),
                 "scoring_contract_prompt_ids": contract_ids,
+            }
+        )
+    if is_v0_6_clarity_corpus(records):
+        vague_ids = prompt_ids_with_phrases(records, VAGUE_TASK_PHRASES)
+        abstract_ids = prompt_ids_with_phrases(records, ABSTRACT_FIELD_NAME_PHRASES)
+        homework_ids = prompt_ids_with_phrases(records, JSON_HOMEWORK_STYLE_PHRASES)
+        non_clarity_ids = set(vague_ids) | set(abstract_ids) | set(homework_ids)
+        inventory.update(
+            {
+                "vague_task_count": len(vague_ids),
+                "vague_task_prompt_ids": vague_ids,
+                "abstract_field_name_count": len(abstract_ids),
+                "abstract_field_name_prompt_ids": abstract_ids,
+                "json_homework_style_count": len(homework_ids),
+                "json_homework_style_prompt_ids": homework_ids,
+                "natural_prompt_clarity_count": len(records) - len(non_clarity_ids),
             }
         )
     return inventory

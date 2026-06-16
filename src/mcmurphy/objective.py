@@ -51,13 +51,27 @@ def checklist_item_count(response_text: str, parsed_json: Any | None = None) -> 
     return sum(1 for line in lines if bullet_re.match(line))
 
 
-def contract_item_count(response_text: str, parsed_json: Any | None = None) -> int:
+def contract_items(parsed_json: Any | None, top_level_key: str | None = None) -> list[Any] | None:
     if isinstance(parsed_json, dict):
+        if top_level_key:
+            value = parsed_json.get(top_level_key)
+            return value if isinstance(value, list) else None
         arrays = [value for value in parsed_json.values() if isinstance(value, list)]
         if arrays:
-            return len(arrays[0])
+            return arrays[0]
     if isinstance(parsed_json, list):
-        return len(parsed_json)
+        return parsed_json
+    return None
+
+
+def contract_item_count(
+    response_text: str,
+    parsed_json: Any | None = None,
+    top_level_key: str | None = None,
+) -> int:
+    items = contract_items(parsed_json, top_level_key)
+    if items is not None:
+        return len(items)
 
     lines = [line.strip() for line in response_text.splitlines() if line.strip()]
     bullet_re = re.compile(r"^(\d+[\.)]|[-*])\s+")
@@ -292,7 +306,17 @@ def evaluate_contract_numeric_fields(
         result["numeric_field_failures"] = failures
 
 
-def field_present(response_text: str, parsed_json: Any | None, field: str) -> bool:
+def field_present(
+    response_text: str,
+    parsed_json: Any | None,
+    field: str,
+    top_level_key: str | None = None,
+) -> bool:
+    items = contract_items(parsed_json, top_level_key)
+    if items is not None:
+        return bool(items) and all(
+            isinstance(item, dict) and field in item for item in items
+        )
     if parsed_json is not None:
         exists, _value = get_dotted_value(parsed_json, field)
         if exists:
@@ -308,6 +332,8 @@ def evaluate_scoring_contract(
 ) -> dict[str, Any]:
     contract = prompt_record.get("scoring_contract") or {}
     normalized_response = normalize_text(response_text)
+    top_level_key = contract.get("top_level_key")
+    top_level_key = str(top_level_key) if top_level_key else None
     required_concepts = [str(item) for item in contract.get("required_concepts", [])]
     required_fields = [str(item) for item in contract.get("required_fields", [])]
     forbidden_anywhere = [
@@ -342,7 +368,7 @@ def evaluate_scoring_contract(
     required_fields_found = [
         field
         for field in required_fields
-        if field_present(response_text, parsed_json, field)
+        if field_present(response_text, parsed_json, field, top_level_key)
     ]
     required_fields_missing = [
         field for field in required_fields if field not in required_fields_found
@@ -365,6 +391,7 @@ def evaluate_scoring_contract(
         "forbidden_as_instruction_found": forbidden_instruction_found,
         "check_type": "scoring_contract",
         "artifact_type": str(contract.get("artifact_type") or ""),
+        "top_level_key": top_level_key,
         "pass_conditions": list(contract.get("pass_conditions") or []),
         "fail_conditions": list(contract.get("fail_conditions") or []),
         "needs_manual_or_llm_judge": False,
@@ -377,9 +404,13 @@ def evaluate_scoring_contract(
     if required_fields_missing:
         result["failure_reasons"].append("missing_required_fields")
 
+    if top_level_key and isinstance(parsed_json, dict) and top_level_key not in parsed_json:
+        result["failure_reasons"].append("missing_top_level_key")
+        result["required_elements_missing"].append(top_level_key)
+
     expected_count = contract.get("required_item_count")
     if expected_count is not None:
-        actual_count = contract_item_count(response_text, parsed_json)
+        actual_count = contract_item_count(response_text, parsed_json, top_level_key)
         result["item_count"] = actual_count
         result["required_item_count"] = int(expected_count)
         if actual_count != int(expected_count):
