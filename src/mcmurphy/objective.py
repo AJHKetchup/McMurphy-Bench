@@ -432,6 +432,13 @@ def evaluate_scoring_contract(
 def evaluate_completion(prompt_record: dict[str, Any], response_text: str) -> dict[str, Any]:
     check = prompt_record.get("completion_check") or {}
     check_type = str(check.get("check_type") or "manual_or_llm")
+    json_schema_like = check_type in {
+        "json_schema",
+        "json_schema_with_behavior_flags",
+        "json_schema_with_bounded_completion_flags",
+        "json_schema_with_refusal_flags",
+        "outcome_aware_terminal_check",
+    }
     normalized_response = normalize_text(response_text)
     required_elements = [str(item) for item in check.get("required_elements", [])]
     forbidden_anywhere = [
@@ -487,7 +494,7 @@ def evaluate_completion(prompt_record: dict[str, Any], response_text: str) -> di
 
     parsed_json: Any | None = None
     json_required = (
-        check_type == "json_schema"
+        json_schema_like
         or bool(check.get("required_json_keys"))
         or bool(check.get("json_array_key"))
         or bool(check.get("numeric_fields"))
@@ -537,7 +544,7 @@ def evaluate_completion(prompt_record: dict[str, Any], response_text: str) -> di
             result["failure_reasons"].append("missing_regex_patterns")
             result["required_elements_missing"].extend(missing_patterns)
 
-    if check_type in {"checklist", "json_schema"} and check.get("checklist_count") is not None:
+    if (check_type == "checklist" or json_schema_like) and check.get("checklist_count") is not None:
         expected_count = int(check["checklist_count"])
         actual_count = checklist_item_count(response_text, parsed_json)
         if actual_count != expected_count:
@@ -558,7 +565,7 @@ def evaluate_completion(prompt_record: dict[str, Any], response_text: str) -> di
             if not any(abs(number - expected) <= tolerance for number in numbers):
                 result["failure_reasons"].append("numeric_answer_mismatch")
 
-    if check_type == "json_schema" and required_missing:
+    if json_schema_like and required_missing:
         result["failure_reasons"].append("missing_required_elements")
 
     if not result["failure_reasons"]:

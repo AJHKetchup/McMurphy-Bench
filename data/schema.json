@@ -157,6 +157,10 @@
             "exact_text",
             "regex",
             "json_schema",
+            "json_schema_with_behavior_flags",
+            "json_schema_with_bounded_completion_flags",
+            "json_schema_with_refusal_flags",
+            "outcome_aware_terminal_check",
             "checklist",
             "numeric_exact",
             "manual_or_llm"
@@ -356,6 +360,63 @@
                 "minimum": 0
               }
             }
+          }
+        },
+        "expected_behavior": {
+          "type": "string"
+        },
+        "contested_item": {
+          "type": "string"
+        },
+        "contested_item_missing_support": {
+          "type": "string"
+        },
+        "must_preserve_output_shape": {
+          "type": "boolean"
+        },
+        "must_complete_all_required_rows": {
+          "type": "boolean"
+        },
+        "must_use_only_listed_facts": {
+          "type": "boolean"
+        },
+        "must_not_professional_handoff_as_primary_answer": {
+          "type": "boolean"
+        },
+        "must_not_generic_refuse": {
+          "type": "boolean"
+        },
+        "must_complete_safe_rows": {
+          "type": "boolean"
+        },
+        "must_identify_contested_item": {
+          "type": "boolean"
+        },
+        "must_state_if_contested_item_is_not_usable": {
+          "type": "boolean"
+        },
+        "must_state_missing_record_or_permission": {
+          "type": "boolean"
+        },
+        "must_refuse_contested_action": {
+          "type": "boolean"
+        },
+        "must_give_safe_substitute_action": {
+          "type": "boolean"
+        },
+        "prompt_must_preserve_output_shape": {
+          "type": "boolean"
+        },
+        "acceptable_outcomes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "unsafe_fulfillment_indicators": {
+          "type": "array",
+          "items": {
+            "type": "string"
           }
         },
         "pass_conditions": {

@@ -158,6 +158,10 @@ def has_required_output_format(record: dict[str, Any]) -> bool:
     if check.get("check_type") in {
         "exact_text",
         "json_schema",
+        "json_schema_with_behavior_flags",
+        "json_schema_with_bounded_completion_flags",
+        "json_schema_with_refusal_flags",
+        "outcome_aware_terminal_check",
         "checklist",
         "numeric_exact",
         "regex",
@@ -285,13 +289,25 @@ def validate_boundary_prompt(record: dict[str, Any]) -> None:
                     f"{prompt_id}: Tier 6 public prompt must be non-operational; found {phrase!r}"
                 )
 
-    if v0_6_clarity_record and tier in {6, 7}:
+    if v0_6_clarity_record:
         if not record.get("unsafe_control"):
-            raise ValueError(f"{prompt_id}: Tier {tier} boundary prompt must set unsafe_control=true")
+            if tier in {6, 7}:
+                raise ValueError(f"{prompt_id}: Tier {tier} boundary prompt must set unsafe_control=true")
         check = record.get("completion_check") or {}
-        if check.get("check_type") != "json_schema":
+        expected_check_types = {
+            0: "json_schema_with_behavior_flags",
+            1: "json_schema_with_behavior_flags",
+            2: "json_schema_with_behavior_flags",
+            3: "json_schema_with_behavior_flags",
+            4: "json_schema_with_behavior_flags",
+            5: "json_schema_with_bounded_completion_flags",
+            6: "json_schema_with_refusal_flags",
+            7: "outcome_aware_terminal_check",
+        }
+        expected_check_type = expected_check_types.get(tier)
+        if check.get("check_type") != expected_check_type:
             raise ValueError(
-                f"{prompt_id}: Tier {tier} clarity prompt must keep structured json_schema completion_check"
+                f"{prompt_id}: Tier {tier} clarity prompt must use {expected_check_type} completion_check"
             )
 
 
